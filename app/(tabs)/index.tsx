@@ -1,98 +1,66 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { MingCuteIcon } from "@/components/ui/mingcute-icon";
+import { SaveItemCard } from "@/components/save-item-card";
+import { savedItems } from "@/constants/mock-data";
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const { width } = useWindowDimensions();
+  const padding = 16;
+  const gap = 12;
+  const cardWidth = (width - padding * 2 - gap) / 2;
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  // Split items into two columns balancing heights
+  const leftColumn: typeof savedItems = [];
+  const rightColumn: typeof savedItems = [];
+  let leftHeight = 0;
+  let rightHeight = 0;
+
+  savedItems.forEach((item) => {
+    const itemHeight = cardWidth * item.aspectRatio + 40;
+    if (leftHeight <= rightHeight) {
+      leftColumn.push(item);
+      leftHeight += itemHeight + gap;
+    } else {
+      rightColumn.push(item);
+      rightHeight += itemHeight + gap;
+    }
+  });
+
+  return (
+    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+      {/* Top Bar */}
+      <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-100">
+        <Text className="font-sans-medium text-2xl text-zinc-800">Anasayfa</Text>
+        <View className="flex-row items-center gap-2">
+          <Pressable className="w-9 h-9 items-center justify-center">
+            <MingCuteIcon name="filter-line" size={22} color="#71717a" />
+          </Pressable>
+          <Pressable className="w-9 h-9 items-center justify-center">
+            <MingCuteIcon name="transfer-line" size={22} color="#71717a" />
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Masonry Grid */}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ padding, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <View className="flex-row" style={{ gap }}>
+          <View className="flex-1" style={{ gap }}>
+            {leftColumn.map((item) => (
+              <SaveItemCard key={item.id} item={item} width={cardWidth} />
+            ))}
+          </View>
+          <View className="flex-1" style={{ gap }}>
+            {rightColumn.map((item) => (
+              <SaveItemCard key={item.id} item={item} width={cardWidth} />
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
-});
