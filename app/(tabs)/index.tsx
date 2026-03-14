@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { SaveItemCard } from "@/components/save-item-card";
 import { savedItems } from "@/constants/mock-data";
+import { openFilterSheet } from "@/components/global-bottom-sheet";
 
 export default function HomeScreen() {
   const { width } = useWindowDimensions();
@@ -32,14 +33,9 @@ export default function HomeScreen() {
       {/* Top Bar */}
       <View className="flex-row items-center justify-between px-4 py-3 border-b border-zinc-100">
         <Text className="font-sans-medium text-2xl text-zinc-800">Anasayfa</Text>
-        <View className="flex-row items-center gap-2">
-          <Pressable className="w-9 h-9 items-center justify-center">
-            <MingCuteIcon name="filter-line" size={22} color="#71717a" />
-          </Pressable>
-          <Pressable className="w-9 h-9 items-center justify-center">
-            <MingCuteIcon name="transfer-line" size={22} color="#71717a" />
-          </Pressable>
-        </View>
+        <Pressable className="w-9 h-9 items-center justify-center" onPress={() => { console.log("[Home] filter tapped"); openFilterSheet(); }}>
+          <MingCuteIcon name="filter-line" size={22} color="#71717a" />
+        </Pressable>
       </View>
 
       {/* Masonry Grid */}

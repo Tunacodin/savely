@@ -1,4 +1,5 @@
 import { View, Pressable } from "react-native";
+import { GlassView } from "expo-glass-effect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
@@ -25,8 +26,9 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   });
 
   return (
-    <View
-      className="bg-gray-50"
+    <GlassView
+      glassEffectStyle="regular"
+      className="absolute bottom-0 left-0 right-0"
       style={{ paddingBottom: insets.bottom }}
     >
       <View className="flex-row items-center px-6 pt-2">
@@ -34,7 +36,9 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           if (item.type === "fab") {
             return (
               <View key="fab" className="flex-1 items-center">
-                <View className="w-[66px] h-[66px] bg-gray-50 rounded-full items-center justify-center -mt-10">
+                <View
+                  className="w-[68px] h-[68px] bg-gray-50 rounded-full items-center justify-center -mt-10"
+                >
                   <Pressable className="w-16 h-16 bg-black rounded-full items-center justify-center">
                     <MingCuteIcon name="add-line" size={30} color="#f4f4f5" />
                   </Pressable>
@@ -67,6 +71,6 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
           );
         })}
       </View>
-    </View>
+    </GlassView>
   );
 }
