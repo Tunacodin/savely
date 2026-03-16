@@ -1,14 +1,8 @@
 import { View, Text } from "react-native";
 import { Image } from "expo-image";
-import Ionicons from "@expo/vector-icons/Ionicons";
-import type { SavedItem, Platform } from "@/constants/mock-data";
-
-const platformIcons: Record<Platform, { name: string; color: string }> = {
-  youtube: { name: "logo-youtube", color: "#FF0000" },
-  instagram: { name: "logo-instagram", color: "#E4405F" },
-  pinterest: { name: "logo-pinterest", color: "#BD081C" },
-  tiktok: { name: "logo-tiktok", color: "#000000" },
-};
+import { PlatformBadge } from "@/components/ui/platform-badge";
+import { MingCuteIcon } from "@/components/ui/mingcute-icon";
+import type { SavedItem } from "@/types";
 
 interface Props {
   item: SavedItem;
@@ -16,27 +10,38 @@ interface Props {
 }
 
 export function SaveItemCard({ item, width }: Props) {
-  const imageHeight = width * item.aspectRatio;
-  const platform = platformIcons[item.platform];
+  const hasImage = !!item.imageUrl;
+  const aspectRatio =
+    item.metadata?.width && item.metadata?.height
+      ? item.metadata.height / item.metadata.width
+      : item.aspectRatio;
+  const imageHeight = hasImage ? width * aspectRatio : width * 0.55;
 
   return (
     <View style={{ width }}>
       <View style={{ width, height: imageHeight, position: "relative" }}>
-        <Image
-          source={{ uri: item.imageUrl }}
-          style={{ width, height: imageHeight, borderRadius: 20 }}
-          contentFit="cover"
-        />
-        {/* Platform Badge */}
-        <View
-          className="absolute bottom-2 left-2 w-6 h-6 rounded-full items-center justify-center"
-          style={{ backgroundColor: "rgba(255,255,255,0.85)" }}
-        >
-          <Ionicons
-            name={platform.name as any}
-            size={14}
-            color={platform.color}
+        {hasImage ? (
+          <Image
+            source={{ uri: item.imageUrl }}
+            style={{ width, height: imageHeight, borderRadius: 20 }}
+            contentFit="cover"
           />
+        ) : (
+          <View
+            className="bg-zinc-100 justify-end p-4"
+            style={{ width, height: imageHeight, borderRadius: 20 }}
+          >
+            <Text
+              className="font-sans text-[11px] text-zinc-400"
+              numberOfLines={3}
+            >
+              {item.title}
+            </Text>
+          </View>
+        )}
+        {/* Platform Badge */}
+        <View className="absolute bottom-2 left-2">
+          <PlatformBadge platform={item.platform} />
         </View>
       </View>
       <View className="mt-2 px-1.5">
