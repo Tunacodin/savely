@@ -1,3 +1,5 @@
+import type { ContentType, SavedItemMetadata } from "@/types/saved-item";
+
 export type Platform = "youtube" | "instagram" | "pinterest" | "tiktok";
 
 export interface SavedItem {
@@ -5,7 +7,9 @@ export interface SavedItem {
   title: string;
   imageUrl: string;
   platform: Platform;
+  contentType: ContentType;
   aspectRatio: number;
+  metadata?: SavedItemMetadata;
 }
 
 export interface Collection {
@@ -19,45 +23,52 @@ export interface Collection {
 export const savedItems: SavedItem[] = [
   {
     id: "1",
-    title: "Kenan Yildiz Gol Sevinci",
-    imageUrl: "https://picsum.photos/seed/kenan/400/600",
-    platform: "youtube",
-    aspectRatio: 1.5,
+    title: "Kiralık konut · Kadıköy · ★5,0 · 3 yatak odası · 4 yatak · 1 banyo",
+    imageUrl: "https://picsum.photos/seed/airbnb/400/400",
+    platform: "airbnb",
+    contentType: "link",
+    aspectRatio: 1.0,
   },
   {
     id: "2",
-    title: "Siyah Beyaz Oturma Odasi",
-    imageUrl: "https://picsum.photos/seed/oda/400/280",
-    platform: "pinterest",
-    aspectRatio: 0.7,
+    title: "Cüneyt Arkın (@cunetarkin1) · Instagram fotoğrafları ve videoları",
+    imageUrl: "https://picsum.photos/seed/arkin/400/400",
+    platform: "instagram",
+    contentType: "image",
+    aspectRatio: 1.0,
   },
   {
     id: "3",
-    title: "Fit Aksam Yemegi Tabagi",
-    imageUrl: "https://picsum.photos/seed/yemek/400/400",
-    platform: "tiktok",
+    title: "https://x.com/Haber/status/2033330012544278631?s=20",
+    imageUrl: "",
+    platform: "x",
+    contentType: "post",
     aspectRatio: 1.0,
   },
   {
     id: "4",
-    title: "Crossfit Egzersizleri",
-    imageUrl: "https://picsum.photos/seed/crossfit/400/500",
-    platform: "youtube",
-    aspectRatio: 1.25,
+    title: "Tuna adlı kullanıcıdan bu Pine göz atın",
+    imageUrl: "https://picsum.photos/seed/bmw/400/400",
+    platform: "pinterest",
+    contentType: "image",
+    aspectRatio: 1.0,
   },
   {
     id: "5",
-    title: "Goku Telefon Duvar Kagidi",
-    imageUrl: "https://picsum.photos/seed/goku/400/700",
-    platform: "pinterest",
-    aspectRatio: 1.75,
+    title: "MUHTEŞEMSİN ARDA GÜLER 🎉 HARİKA GOL 🔥",
+    imageUrl: "https://picsum.photos/seed/arda/400/225",
+    platform: "youtube",
+    contentType: "video",
+    aspectRatio: 1.0,
+    metadata: { width: 1920, height: 1080 },
   },
   {
     id: "6",
-    title: "Old Money Krem Beyaz Kombin",
-    imageUrl: "https://picsum.photos/seed/fashion/400/550",
-    platform: "instagram",
-    aspectRatio: 1.375,
+    title: "Yandex — hızlı İnternet araması",
+    imageUrl: "",
+    platform: "link",
+    contentType: "link",
+    aspectRatio: 1.0,
   },
 ];
 
