@@ -1,11 +1,18 @@
 import { View, Pressable } from "react-native";
 import { GlassView } from "expo-glass-effect";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
   MingCuteIcon,
   type MingCuteIconName,
 } from "@/components/ui/mingcute-icon";
+import { extractUrlFromText } from "@/utils/platform-detector";
+
+let ClipboardModule: typeof import("expo-clipboard") | null = null;
+try {
+  ClipboardModule = require("expo-clipboard");
+} catch {}
 
 const TAB_ICONS: Record<string, MingCuteIconName> = {
   index: "home-2-line",
@@ -16,6 +23,21 @@ const TAB_ICONS: Record<string, MingCuteIconName> = {
 
 export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+
+  const handleFabPress = async () => {
+    if (ClipboardModule) {
+      try {
+        const clipboardText = await ClipboardModule.getStringAsync();
+        const extractedUrl = extractUrlFromText(clipboardText);
+        if (extractedUrl) {
+          router.push(`/save?url=${encodeURIComponent(extractedUrl)}`);
+          return;
+        }
+      } catch {}
+    }
+    router.push("/save");
+  };
   const tabs = state.routes;
 
   // Insert FAB placeholder at position 2 (between collections and search)
@@ -35,15 +57,15 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
         {items.map((item, i) => {
           if (item.type === "fab") {
             return (
-              <View key="fab" className="flex-1 items-center">
+              <Pressable key="fab" onPress={handleFabPress} className="flex-1 items-center">
                 <View
                   className="w-[68px] h-[68px] bg-gray-50 rounded-full items-center justify-center -mt-10"
                 >
-                  <Pressable className="w-16 h-16 bg-black rounded-full items-center justify-center">
+                  <View className="w-16 h-16 bg-black rounded-full items-center justify-center">
                     <MingCuteIcon name="add-line" size={30} color="#f4f4f5" />
-                  </Pressable>
+                  </View>
                 </View>
-              </View>
+              </Pressable>
             );
           }
 
