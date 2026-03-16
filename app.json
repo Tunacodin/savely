@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "savely",
-    "slug": "savely",
+    "slug": "savelyapp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,9 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tuna58.savelyapp"
     },
     "android": {
+      "package": "com.tuna58.savelyapp",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,11 +41,30 @@
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-share-intent",
+        {
+          "iosActivationRules": {
+            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
+            "NSExtensionActivationSupportsText": true
+          },
+          "androidIntentFilters": [
+            "text/*"
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "14325d77-b475-4e5f-889c-a4d250aa2f90"
+      }
+    },
+    "owner": "tuna58"
   }
 }
