@@ -1,9 +1,10 @@
 import { View, Text, ScrollView, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
-import { collections } from "@/constants/mock-data";
+import { useSavedItemsStore } from "@/store/saved-items";
 
 export default function CollectionsScreen() {
+  const collections = useSavedItemsStore((s) => s.collections);
   return (
     <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
       {/* Header */}

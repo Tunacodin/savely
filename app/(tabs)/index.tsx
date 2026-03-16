@@ -2,23 +2,30 @@ import { View, Text, ScrollView, Pressable, useWindowDimensions } from "react-na
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { SaveItemCard } from "@/components/save-item-card";
-import { savedItems } from "@/constants/mock-data";
+import { useSavedItemsStore } from "@/store/saved-items";
 import { openFilterSheet } from "@/components/global-bottom-sheet";
+import type { SavedItem } from "@/types";
 
 export default function HomeScreen() {
+  const savedItems = useSavedItemsStore((s) => s.items);
   const { width } = useWindowDimensions();
   const padding = 16;
   const gap = 12;
   const cardWidth = (width - padding * 2 - gap) / 2;
 
   // Split items into two columns balancing heights
-  const leftColumn: typeof savedItems = [];
-  const rightColumn: typeof savedItems = [];
+  const leftColumn: SavedItem[] = [];
+  const rightColumn: SavedItem[] = [];
   let leftHeight = 0;
   let rightHeight = 0;
 
   savedItems.forEach((item) => {
-    const itemHeight = cardWidth * item.aspectRatio + 40;
+    const hasImage = !!item.imageUrl;
+    const aspectRatio =
+      item.metadata?.width && item.metadata?.height
+        ? item.metadata.height / item.metadata.width
+        : item.aspectRatio;
+    const itemHeight = cardWidth * (hasImage ? aspectRatio : 0.55) + 40;
     if (leftHeight <= rightHeight) {
       leftColumn.push(item);
       leftHeight += itemHeight + gap;
