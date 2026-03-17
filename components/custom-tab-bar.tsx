@@ -1,5 +1,5 @@
-import { View, Pressable } from "react-native";
-import { GlassView } from "expo-glass-effect";
+import { View, Pressable, StyleSheet } from "react-native";
+import { BlurView } from "expo-blur";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
@@ -48,11 +48,13 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
   });
 
   return (
-    <GlassView
-      glassEffectStyle="regular"
-      className="absolute bottom-0 left-0 right-0"
-      style={{ paddingBottom: insets.bottom }}
-    >
+    <View style={{ paddingBottom: insets.bottom }}>
+      <BlurView
+        intensity={80}
+        tint="systemChromeMaterialLight"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       <View className="flex-row items-center px-6 pt-2">
         {items.map((item, i) => {
           if (item.type === "fab") {
@@ -87,12 +89,12 @@ export function CustomTabBar({ state, navigation }: BottomTabBarProps) {
               <MingCuteIcon
                 name={iconName}
                 size={24}
-                color={isFocused ? "#27272a" : "#a1a1aa"}
+                color={isFocused ? "#18181B" : "#a1a1aa"}
               />
             </Pressable>
           );
         })}
       </View>
-    </GlassView>
+    </View>
   );
 }

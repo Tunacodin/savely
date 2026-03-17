@@ -55,6 +55,7 @@ export default function RootLayout() {
         <GlobalBottomSheetProvider>
           <ShareIntentHandler>
             <Stack>
+              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="(auth)" options={{ headerShown: false }} />
               <Stack.Screen
@@ -65,7 +66,7 @@ export default function RootLayout() {
                 name="save"
                 options={{
                   headerShown: false,
-                  presentation: "modal",
+                  presentation: "transparentModal",
                   animation: "slide_from_bottom",
                 }}
               />
