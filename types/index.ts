@@ -4,4 +4,8 @@ export type {
   SavedItemMetadata,
   SavedItem,
   Collection,
+  PremiumTier,
+  BillingPeriod,
+  PremiumPlan,
+  UserSubscription,
 } from "./saved-item";

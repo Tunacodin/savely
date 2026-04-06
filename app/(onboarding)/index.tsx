@@ -10,37 +10,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Image } from "expo-image";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import type { PlatformName } from "@/components/ui/platform-badge";
 import { PlatformLogo } from "@/components/onboarding/platform-logo";
+import { useThemeColors } from "@/hooks/use-theme";
 
-const PAGES = [
-  {
-    title: "Dağınıklığa Son Ver",
-    description:
-      "Sosyal mecralarda kaybolan tüm o gönderileri, videoları ve yazıları Savely ile tek bir güvenli noktada birleştirin.",
-    buttonText: "Devam et",
-  },
-  {
-    title: "Dijital Arşivini Oluştur",
-    description:
-      "Favori içeriklerinizi kendi zevkinize göre kategorize edin. Karmaşayı bırakın ve size özel kütüphanenin tadını çıkarın.",
-    buttonText: "Devam et",
-  },
-  {
-    title: "Aradığını Hemen Bul",
-    description:
-      '"Nereye kaydetmiştim?" diye düşünmeyi bırakın. Gelişmiş arama ile binlerce içerik arasından istediğinize anında ulaşın.',
-    buttonText: "Devam et",
-  },
-  {
-    title: "Kontrol Sende Olsun",
-    description:
-      "Dijital dünyanı yönetmeye ve her şeye tek noktadan erişmeye hazırsan, kütüphaneni oluşturmaya hemen başla.",
-    buttonText: "Hadi başlayalım!",
-  },
+const PAGE_KEYS = [
+  { title: "onboarding.page1Title", desc: "onboarding.page1Desc", button: "common.continue" },
+  { title: "onboarding.page2Title", desc: "onboarding.page2Desc", button: "common.continue" },
+  { title: "onboarding.page3Title", desc: "onboarding.page3Desc", button: "common.continue" },
+  { title: "onboarding.page4Title", desc: "onboarding.page4Desc", button: "onboarding.letsStart" },
 ];
 
 export default function Onboarding() {
@@ -49,6 +31,8 @@ export default function Onboarding() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [pagerHeight, setPagerHeight] = useState(0);
   const router = useRouter();
+  const c = useThemeColors();
+  const { t } = useTranslation();
 
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -60,7 +44,7 @@ export default function Onboarding() {
 
   const goToNext = () => {
     const next = activeIndex + 1;
-    if (next < PAGES.length) {
+    if (next < PAGE_KEYS.length) {
       scrollRef.current?.scrollTo({ x: next * width, animated: true });
       setActiveIndex(next);
     } else {
@@ -77,15 +61,31 @@ export default function Onboarding() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white">
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       {/* Header */}
-      <View className="flex-row items-center justify-center px-5 py-3 relative">
-        {activeIndex > 0 && (
-          <Pressable onPress={goBack} className="absolute left-5 z-10">
-            <MingCuteIcon name="left-line" size={24} />
+      <View
+        style={{
+          height: 48,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+        }}
+      >
+        {activeIndex > 0 ? (
+          <Pressable onPress={goBack} hitSlop={8}>
+            <MingCuteIcon name="left-line" size={24} color={c.textPrimary} />
           </Pressable>
+        ) : (
+          <Text
+            style={{
+              fontFamily: "Rubik_500Medium",
+              fontSize: 20,
+              color: c.textPrimary,
+            }}
+          >
+            Savely
+          </Text>
         )}
-        <Text className="text-lg font-sans-bold text-neutral-900">Savely</Text>
       </View>
 
       {/* Pager */}
@@ -93,48 +93,66 @@ export default function Onboarding() {
         className="flex-1"
         onLayout={(e) => setPagerHeight(e.nativeEvent.layout.height)}
       >
-        {pagerHeight > 0 && (
-          <ScrollView
-            ref={scrollRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleScrollEnd}
-            scrollEventThrottle={16}
-          >
-            <View style={{ width, height: pagerHeight }}>
-              <PlatformLogosPage />
-            </View>
-            <View style={{ width, height: pagerHeight }}>
-              <ContentCardsPage width={width} />
-            </View>
-            <View style={{ width, height: pagerHeight }}>
-              <SearchPage />
-            </View>
-            <View style={{ width, height: pagerHeight }}>
-              <CategoriesPage />
-            </View>
-          </ScrollView>
-        )}
+        <ScrollView
+          ref={scrollRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleScrollEnd}
+          scrollEventThrottle={16}
+          style={{ flex: 1 }}
+        >
+          <View style={{ width, height: pagerHeight }}>
+            <PlatformLogosPage />
+          </View>
+          <View style={{ width, height: pagerHeight }}>
+            <ContentCardsPage width={width} />
+          </View>
+          <View style={{ width, height: pagerHeight }}>
+            <SearchPage />
+          </View>
+          <View style={{ width, height: pagerHeight }}>
+            <CategoriesPage />
+          </View>
+        </ScrollView>
       </View>
 
       {/* Footer */}
-      <View className="px-6 pb-4">
-        <Text className="text-[26px] font-sans-bold text-neutral-900 text-center mb-2">
-          {PAGES[activeIndex].title}
+      <View style={{ paddingHorizontal: 16, paddingBottom: 24, gap: 8 }}>
+        <Text
+          style={{
+            fontFamily: "Rubik_600SemiBold",
+            fontSize: 28,
+            color: c.textPrimary,
+            textAlign: "center",
+          }}
+        >
+          {t(PAGE_KEYS[activeIndex].title)}
         </Text>
-        <Text className="text-sm font-sans text-neutral-400 text-center leading-5 px-2 mb-6">
-          {PAGES[activeIndex].description}
+        <Text
+          style={{
+            fontFamily: "Rubik_400Regular",
+            fontSize: 16,
+            color: c.textSecondary,
+            textAlign: "center",
+            lineHeight: 24,
+            marginBottom: 8,
+          }}
+        >
+          {t(PAGE_KEYS[activeIndex].desc)}
         </Text>
 
         {/* Pagination Dots */}
-        <View className="flex-row justify-center items-center gap-1.5 mb-6">
-          {PAGES.map((_, i) => (
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: 6, marginBottom: 8 }}>
+          {PAGE_KEYS.map((_, i) => (
             <View
               key={i}
-              className={`h-2 rounded-full ${
-                i === activeIndex ? "w-2 bg-neutral-900" : "w-2 bg-neutral-200"
-              }`}
+              style={{
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: i === activeIndex ? c.textPrimary : c.border,
+                width: i === activeIndex ? 16 : 8,
+              }}
             />
           ))}
         </View>
@@ -142,10 +160,22 @@ export default function Onboarding() {
         {/* Button */}
         <Pressable
           onPress={goToNext}
-          className="bg-neutral-900 rounded-2xl py-4 items-center"
+          style={{
+            backgroundColor: c.buttonPrimary,
+            borderRadius: 16,
+            height: 64,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
         >
-          <Text className="text-white font-sans-semibold text-base">
-            {PAGES[activeIndex].buttonText}
+          <Text
+            style={{
+              fontFamily: "Rubik_400Regular",
+              fontSize: 16,
+              color: c.buttonPrimaryText,
+            }}
+          >
+            {t(PAGE_KEYS[activeIndex].button)}
           </Text>
         </Pressable>
       </View>
@@ -206,13 +236,13 @@ const CONTENT_CARDS = {
   left: [
     {
       title: "Kenan Yıldız Gol Sevinci",
-      imageUrl: "https://picsum.photos/seed/kenan-goal/400/520",
+      imageSource: require("@/assets/images/mock/kenan-yildiz-youtube.jpg"),
       platform: "youtube" as PlatformName,
       height: 220,
     },
     {
-      title: "",
-      imageUrl: "https://picsum.photos/seed/runner-track/400/480",
+      title: "Crossfit Egzersizleri",
+      imageSource: require("@/assets/images/mock/crossfit-instagram.jpg"),
       platform: "instagram" as PlatformName,
       height: 180,
     },
@@ -220,22 +250,15 @@ const CONTENT_CARDS = {
   right: [
     {
       title: "Siyah Beyaz Oturma Odası",
-      imageUrl: "https://picsum.photos/seed/living-room/400/260",
+      imageSource: require("@/assets/images/mock/siyah-beyaz-oda.jpg"),
       platform: "pinterest" as PlatformName,
       height: 130,
     },
     {
       title: "Fit Akşam Yemeği Tabağı",
-      imageUrl: "https://picsum.photos/seed/healthy-meal/400/500",
+      imageSource: require("@/assets/images/mock/fit-aksam-yemegi.jpg"),
       platform: "tiktok" as PlatformName,
       height: 200,
-    },
-    {
-      title: "",
-      imageUrl: "",
-      platform: "youtube" as PlatformName,
-      height: 100,
-      isGradient: true,
     },
   ],
 };
@@ -253,17 +276,9 @@ function ContentCardsPage({ width }: { width: number }) {
 
         {/* Right column */}
         <View className="flex-1 gap-2">
-          {CONTENT_CARDS.right.map((card, i) =>
-            card.isGradient ? (
-              <View
-                key={i}
-                className="rounded-2xl bg-orange-400"
-                style={{ height: card.height }}
-              />
-            ) : (
-              <ContentCard key={i} card={card} />
-            )
-          )}
+          {CONTENT_CARDS.right.map((card, i) => (
+            <ContentCard key={i} card={card} />
+          ))}
         </View>
       </View>
     </View>
@@ -275,7 +290,7 @@ function ContentCard({
 }: {
   card: {
     title: string;
-    imageUrl: string;
+    imageSource: number;
     platform: PlatformName;
     height: number;
   };
@@ -284,7 +299,7 @@ function ContentCard({
     <View>
       <View className="relative" style={{ height: card.height }}>
         <Image
-          source={{ uri: card.imageUrl }}
+          source={card.imageSource}
           className="flex-1 rounded-2xl"
           contentFit="cover"
         />
@@ -306,17 +321,17 @@ function ContentCard({
 
 /* ─── Page 3: Search Mockup ─── */
 
-const SEARCH_ITEMS: { imageUrl: string; platform: PlatformName }[] = [
+const SEARCH_ITEMS: { imageSource: number; platform: PlatformName }[] = [
   {
-    imageUrl: "https://picsum.photos/seed/chicken-dish/200/200",
+    imageSource: require("@/assets/images/mock/fit-aksam-yemegi.jpg"),
     platform: "youtube",
   },
   {
-    imageUrl: "https://picsum.photos/seed/runner-athlete/200/200",
+    imageSource: require("@/assets/images/mock/crossfit-instagram.jpg"),
     platform: "instagram",
   },
   {
-    imageUrl: "https://picsum.photos/seed/orange-sunset/200/200",
+    imageSource: require("@/assets/images/mock/goku-wallpaper.jpg"),
     platform: "pinterest",
   },
 ];
@@ -338,7 +353,7 @@ function SearchPage() {
           <View key={i} className="flex-row items-center py-2.5">
             <View className="relative">
               <Image
-                source={{ uri: item.imageUrl }}
+                source={item.imageSource}
                 className="w-16 h-16 rounded-xl"
                 contentFit="cover"
               />
@@ -361,16 +376,16 @@ function SearchPage() {
 
 const CATEGORY_CARDS = [
   {
-    imageUrl: "https://picsum.photos/seed/soup-bowl/200/200",
-    bgColor: "#FFF5E6",
+    imageSource: require("@/assets/images/mock/fit-aksam-yemegi.jpg"),
+    bgColor: "#f7e9d5",
   },
   {
-    imageUrl: "https://picsum.photos/seed/clapperboard/200/200",
-    bgColor: "#F0F0F0",
+    imageSource: require("@/assets/images/mock/kenan-yildiz-youtube.jpg"),
+    bgColor: "#ebebee",
   },
   {
-    imageUrl: "https://picsum.photos/seed/polo-shirt/200/200",
-    bgColor: "#E8F4FD",
+    imageSource: require("@/assets/images/mock/old-money-kombin.jpg"),
+    bgColor: "#e0f0ff",
   },
 ];
 
@@ -385,7 +400,7 @@ function CategoriesPage() {
             style={{ backgroundColor: card.bgColor }}
           >
             <Image
-              source={{ uri: card.imageUrl }}
+              source={card.imageSource}
               className="w-20 h-20 rounded-xl"
               contentFit="cover"
             />

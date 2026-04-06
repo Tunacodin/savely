@@ -1,52 +1,103 @@
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
-
-function InfoField({ label, value }: { label: string; value: string }) {
-  return (
-    <View className="bg-neutral-50 rounded-2xl px-5 py-4 mb-3">
-      <Text className="font-sans text-xs text-neutral-400 mb-1">{label}</Text>
-      <Text className="font-sans text-base text-neutral-900">{value}</Text>
-    </View>
-  );
-}
+import { useAuthStore } from "@/store/auth";
+import { useThemeColors } from "@/hooks/use-theme";
 
 export default function AccountSettingsScreen() {
   const router = useRouter();
+  const { signOut, profile } = useAuthStore();
+  const c = useThemeColors();
+
+  function InfoField({ label, value }: { label: string; value: string }) {
+    return (
+      <View
+        style={{
+          backgroundColor: c.surface,
+          borderRadius: 16,
+          paddingHorizontal: 20,
+          paddingVertical: 16,
+          height: 80,
+          justifyContent: "center",
+        }}
+      >
+        <Text
+          style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textSecondary, marginBottom: 4 }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary }}
+        >
+          {value}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
       {/* Top Bar */}
-      <View className="flex-row items-center px-4 py-5 h-16 border-b-[1.5px] border-zinc-100 bg-white">
-        <Pressable onPress={() => router.back()} className="mr-1.5">
-          <MingCuteIcon name="left-line" size={24} color="#52525B" />
+      <View
+        style={{
+          height: 64,
+          flexDirection: "row",
+          alignItems: "center",
+          paddingHorizontal: 16,
+          gap: 12,
+        }}
+      >
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <MingCuteIcon name="left-line" size={24} color={c.textPrimary} />
         </Pressable>
-        <Text className="font-sans-medium text-xl text-zinc-800">
-          Hesap Ayarları
+        <Text
+          style={{ fontFamily: "Rubik_500Medium", fontSize: 20, color: c.textPrimary }}
+        >
+          Hesap Ayarlar\u0131
         </Text>
       </View>
 
       {/* Info Fields */}
-      <View className="px-4 pt-6">
-        <InfoField label="Ad, Soyad" value="Osman Kağan Kurnaz" />
-        <InfoField label="Eposta" value="osmankagankurnaz@gmail.com" />
-        <InfoField label="Şifre" value="********" />
+      <View style={{ paddingHorizontal: 16, gap: 12, marginTop: 8 }}>
+        <InfoField label="Ad, Soyad" value={profile?.display_name ?? "\u2014"} />
+        <InfoField label="Eposta" value={profile?.email ?? "\u2014"} />
+        <InfoField label="\u015eifre" value="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" />
       </View>
 
       {/* Logout Button */}
-      <View className="px-4 mt-6">
-        <Pressable className="bg-red-50 rounded-2xl py-4 items-center">
-          <Text className="font-sans-medium text-base text-red-500">
-            Çıkış Yap
+      <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
+        <Pressable
+          onPress={() => {
+            Alert.alert("\u00c7\u0131k\u0131\u015f Yap", "Hesab\u0131ndan \u00e7\u0131kmak istedi\u011fine emin misin?", [
+              { text: "\u0130ptal", style: "cancel" },
+              { text: "\u00c7\u0131k\u0131\u015f Yap", style: "destructive", onPress: () => { signOut(); router.replace("/(auth)/login"); } },
+            ]);
+          }}
+          style={{
+            backgroundColor: c.errorBg,
+            borderRadius: 16,
+            height: 64,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text
+            style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.error }}
+          >
+            {"\u00c7\u0131k\u0131\u015f Yap"}
           </Text>
         </Pressable>
       </View>
 
       {/* Delete Account */}
-      <View className="items-center mt-6">
+      <View style={{ alignItems: "center", marginTop: 20 }}>
         <Pressable>
-          <Text className="font-sans text-sm text-neutral-400">Hesabı Sil</Text>
+          <Text
+            style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textTertiary }}
+          >
+            {"Hesab\u0131 Sil"}
+          </Text>
         </Pressable>
       </View>
     </SafeAreaView>

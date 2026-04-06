@@ -26,7 +26,7 @@ export interface SavedItem {
   url: string;
   title: string;
   description?: string;
-  imageUrl?: string;
+  imageUrl?: string | number; // string for network, number for local require()
   platform: import("@/components/ui/platform-badge").PlatformName;
   contentType: ContentType;
   metadata?: SavedItemMetadata;
@@ -44,4 +44,23 @@ export interface Collection {
   bgColor: string;
   itemCount: number;
   createdAt: string;
+}
+
+export type PremiumTier = "free" | "pro";
+
+export type BillingPeriod = "monthly" | "yearly";
+
+export interface PremiumPlan {
+  id: string;
+  tier: PremiumTier;
+  billingPeriod: BillingPeriod;
+  price: number;
+  currency: string;
+  features: string[];
+}
+
+export interface UserSubscription {
+  tier: PremiumTier;
+  currentPlan?: PremiumPlan;
+  expiresAt?: string;
 }

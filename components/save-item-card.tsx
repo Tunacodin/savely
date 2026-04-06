@@ -1,57 +1,68 @@
-import { View, Text } from "react-native";
+import { View, Text, Pressable, StyleSheet } from "react-native";
 import { Image } from "expo-image";
 import { PlatformBadge } from "@/components/ui/platform-badge";
-import { MingCuteIcon } from "@/components/ui/mingcute-icon";
+import { useThemeColors } from "@/hooks/use-theme";
 import type { SavedItem } from "@/types";
 
 interface Props {
   item: SavedItem;
   width: number;
+  onPress?: () => void;
 }
 
-export function SaveItemCard({ item, width }: Props) {
+export function SaveItemCard({ item, width, onPress }: Props) {
+  const c = useThemeColors();
   const hasImage = !!item.imageUrl;
   const aspectRatio =
     item.metadata?.width && item.metadata?.height
       ? item.metadata.height / item.metadata.width
-      : item.aspectRatio;
+      : (item.aspectRatio ?? 1);
   const imageHeight = hasImage ? width * aspectRatio : width * 0.55;
 
+  const imageSource =
+    typeof item.imageUrl === "number"
+      ? item.imageUrl
+      : { uri: item.imageUrl as string };
+
   return (
-    <View style={{ width }}>
-      <View style={{ width, height: imageHeight, position: "relative" }}>
-        {hasImage ? (
+    <Pressable style={{ width }} onPress={onPress}>
+      {/* Card container */}
+      <View
+        style={{
+          width,
+          height: imageHeight,
+          borderRadius: 12,
+          overflow: "hidden",
+          backgroundColor: c.surfaceAlt,
+        }}
+      >
+        {hasImage && (
           <Image
-            source={{ uri: item.imageUrl }}
-            style={{ width, height: imageHeight, borderRadius: 20 }}
-            contentFit="cover"
+            source={imageSource}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
           />
-        ) : (
-          <View
-            className="bg-zinc-100 justify-end p-4"
-            style={{ width, height: imageHeight, borderRadius: 20 }}
-          >
-            <Text
-              className="font-sans text-[11px] text-zinc-400"
-              numberOfLines={3}
-            >
-              {item.title}
-            </Text>
-          </View>
         )}
-        {/* Platform Badge */}
-        <View className="absolute bottom-2 left-2">
-          <PlatformBadge platform={item.platform} />
+        {/* Platform Badge - bottom left */}
+        <View style={{ position: "absolute", bottom: 8, left: 8 }}>
+          <PlatformBadge platform={item.platform} size="md" />
         </View>
       </View>
-      <View className="mt-2 px-1.5">
+
+      {/* Title */}
+      <View style={{ marginTop: 8, paddingHorizontal: 2 }}>
         <Text
-          className="font-sans-medium text-xs text-zinc-800"
+          style={{
+            fontFamily: "Rubik_500Medium",
+            fontSize: 12,
+            color: c.textPrimary,
+            lineHeight: 16,
+          }}
           numberOfLines={2}
         >
-          {item.title}
+          {item.title.split("#")[0].trim()}
         </Text>
       </View>
-    </View>
+    </Pressable>
   );
 }

@@ -1,110 +1,92 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { View, Text, TextInput, Pressable, FlatList } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
-import { PlatformBadge, type PlatformName } from "@/components/ui/platform-badge";
-
-// Recent searches data
-const RECENT_SEARCHES = [
-  { id: "1", label: "Yazlık krem kombin önerisi" },
-  { id: "2", label: "Kremalı Mantarlı Tavuk" },
-  { id: "3", label: "Doğru Güneş Kremi Nasıl" },
-  { id: "4", label: "Güneş Kremi" },
-  { id: "5", label: "Old money yazlık chino pantolon polo" },
-];
-
-// Search results data
-interface SearchResult {
-  id: string;
-  category: string;
-  title: string;
-  description: string;
-  thumbnail: string;
-  platform: PlatformName;
-}
-
-const MOCK_RESULTS: SearchResult[] = [
-  {
-    id: "1",
-    category: "Kombin Önerileri",
-    title: "Yazlık krem kombin önerisi",
-    description: "Old money yazlık chino pantolon - polo..",
-    thumbnail: "https://picsum.photos/seed/combin/200",
-    platform: "youtube",
-  },
-  {
-    id: "2",
-    category: "Yemek Tarifleri",
-    title: "Kremalı Mantarlı Tavuk Tarifi",
-    description: "Old money yazlık chino pantolon - polo..",
-    thumbnail: "https://picsum.photos/seed/food/200",
-    platform: "instagram",
-  },
-  {
-    id: "3",
-    category: "Kombin Önerileri",
-    title: "Doğru Güneş Kremi Nasıl Seçilir?",
-    description: "Old money yazlık chino pantolon - polo..",
-    thumbnail: "https://picsum.photos/seed/sunscreen/200",
-    platform: "medium",
-  },
-];
+import { PlatformBadge } from "@/components/ui/platform-badge";
+import { openItemDetail } from "@/components/global-bottom-sheet";
+import { useSavedItemsStore } from "@/store/saved-items";
+import { useThemeColors } from "@/hooks/use-theme";
+import type { SavedItem } from "@/types";
 
 function RecentSearchItem({
   label,
   onPress,
   onRemove,
+  colors,
 }: {
   label: string;
   onPress: () => void;
   onRemove: () => void;
+  colors: ReturnType<typeof useThemeColors>;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      className="flex-row items-center justify-between px-6 py-5 h-[60px]"
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, height: 56 }}
     >
-      <View className="flex-row items-center gap-3 flex-1">
-        <MingCuteIcon name="time-line" size={20} color="#A1A1AA" />
-        <Text className="font-sans text-base text-zinc-600" numberOfLines={1}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+        <MingCuteIcon name="time-line" size={20} color={colors.textTertiary} />
+        <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 15, color: colors.textMuted }} numberOfLines={1}>
           {label}
         </Text>
       </View>
       <Pressable onPress={onRemove} hitSlop={8}>
-        <MingCuteIcon name="close-line" size={20} color="#A1A1AA" />
+        <MingCuteIcon name="close-line" size={20} color={colors.textTertiary} />
       </Pressable>
     </Pressable>
   );
 }
 
-function SearchResultItem({ item }: { item: SearchResult }) {
+function SearchResultItem({
+  item,
+  collectionName,
+  colors,
+}: {
+  item: SavedItem;
+  collectionName?: string;
+  colors: ReturnType<typeof useThemeColors>;
+}) {
+  const imageSource = item.imageUrl
+    ? typeof item.imageUrl === "number"
+      ? item.imageUrl
+      : { uri: item.imageUrl as string }
+    : null;
+
   return (
-    <Pressable className="flex-row items-center px-4 py-2 gap-3 h-[88px]">
-      <View className="w-[72px] h-[72px]">
-        <View className="w-full h-full rounded-xl overflow-hidden">
-          <Image
-            source={item.thumbnail}
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-          />
+    <Pressable
+      onPress={() => openItemDetail(item)}
+      style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 14 }}
+    >
+      {/* Thumbnail */}
+      <View style={{ width: 76, height: 76 }}>
+        <View style={{ width: 76, height: 76, borderRadius: 14, overflow: "hidden", backgroundColor: colors.surfaceAlt }}>
+          {imageSource && (
+            <Image
+              source={imageSource}
+              style={{ width: 76, height: 76 }}
+              contentFit="cover"
+            />
+          )}
         </View>
-        <View className="absolute -bottom-1 -left-1">
+        <View style={{ position: "absolute", bottom: -4, left: -4 }}>
           <PlatformBadge platform={item.platform} size="md" />
         </View>
       </View>
-      <View className="flex-1 justify-center gap-3">
-        <Text className="font-sans-medium text-xs text-zinc-600">
-          {item.category}
-        </Text>
+
+      {/* Text */}
+      <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+        {collectionName && (
+          <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 12, color: colors.textSecondary }}>
+            {collectionName}
+          </Text>
+        )}
         <Text
-          className="font-sans-medium text-base text-zinc-800"
-          numberOfLines={1}
+          style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: colors.text }}
+          numberOfLines={2}
         >
-          {item.title}
-        </Text>
-        <Text className="font-sans text-sm text-zinc-400" numberOfLines={1}>
-          {item.description}
+          {item.title.split("#")[0].trim()}
         </Text>
       </View>
     </Pressable>
@@ -113,54 +95,98 @@ function SearchResultItem({ item }: { item: SearchResult }) {
 
 export default function SearchScreen() {
   const [query, setQuery] = useState("");
-  const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
+  const { t } = useTranslation();
+  const c = useThemeColors();
 
-  const isActive = query.length > 0;
+  const items = useSavedItemsStore((s) => s.items);
+  const collections = useSavedItemsStore((s) => s.collections);
+  const recentSearches = useSavedItemsStore((s) => s.recentSearches);
+  const addRecentSearch = useSavedItemsStore((s) => s.addRecentSearch);
+  const removeRecentSearch = useSavedItemsStore((s) => s.removeRecentSearch);
 
-  const removeRecentSearch = (id: string) => {
-    setRecentSearches((prev) => prev.filter((item) => item.id !== id));
+  const isActive = query.trim().length > 0;
+
+  const results = useMemo(() => {
+    if (!isActive) return [];
+    const q = query.toLowerCase();
+    return items.filter((item) => item.title.toLowerCase().includes(q));
+  }, [query, items, isActive]);
+
+  const getCollectionName = (collectionId?: string) => {
+    if (!collectionId) return undefined;
+    return collections.find((c) => c.id === collectionId)?.name;
+  };
+
+  const handleSearch = (term: string) => {
+    setQuery(term);
+    addRecentSearch(term);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white" edges={["top"]}>
-      {/* Top Bar - Search Input */}
-      <View className="px-4 py-5 h-16 bg-white">
-        <View className="flex-row items-center justify-between bg-zinc-100 rounded-xl px-3 h-11 gap-2">
-          <View className="flex-row items-center gap-2 flex-1">
-            <MingCuteIcon name="search-line" size={20} color="#A1A1AA" />
-            <TextInput
-              className="flex-1 font-sans text-base text-zinc-800"
-              placeholder="Ara"
-              placeholderTextColor="#A1A1AA"
-              value={query}
-              onChangeText={setQuery}
-            />
-          </View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
+      {/* Search Bar */}
+      <View style={{ height: 64, paddingHorizontal: 16, justifyContent: "center" }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: c.surfaceAlt,
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            height: 44,
+            gap: 8,
+          }}
+        >
+          <MingCuteIcon name="search-line" size={20} color={c.textTertiary} />
+          <TextInput
+            style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.text }}
+            placeholder={t("search.placeholder")}
+            placeholderTextColor={c.textTertiary}
+            value={query}
+            onChangeText={setQuery}
+            onSubmitEditing={() => { if (query.trim()) addRecentSearch(query.trim()); }}
+            returnKeyType="search"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
           {isActive && (
-            <Pressable onPress={() => setQuery("")}>
-              <MingCuteIcon name="close-line" size={20} color="#A1A1AA" />
+            <Pressable onPress={() => setQuery("")} hitSlop={8}>
+              <MingCuteIcon name="close-line" size={20} color={c.textTertiary} />
             </Pressable>
           )}
         </View>
       </View>
 
-      {/* Content */}
       {isActive ? (
         <FlatList
-          data={MOCK_RESULTS}
+          data={results}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <SearchResultItem item={item} />}
-          contentContainerClassName="py-0.5 gap-1"
+          renderItem={({ item }) => (
+            <SearchResultItem
+              item={item}
+              collectionName={getCollectionName(item.collectionId)}
+              colors={c}
+            />
+          )}
+          contentContainerStyle={{ paddingVertical: 4 }}
+          ListEmptyComponent={
+            <View style={{ alignItems: "center", paddingTop: 60 }}>
+              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 15, color: c.textTertiary }}>
+                {t("search.noResults")}
+              </Text>
+            </View>
+          }
         />
       ) : (
         <FlatList
           data={recentSearches}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item}
           renderItem={({ item }) => (
             <RecentSearchItem
-              label={item.label}
-              onPress={() => setQuery(item.label)}
-              onRemove={() => removeRecentSearch(item.id)}
+              label={item}
+              onPress={() => handleSearch(item)}
+              onRemove={() => removeRecentSearch(item)}
+              colors={c}
             />
           )}
         />

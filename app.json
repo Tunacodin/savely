@@ -1,6 +1,7 @@
 {
   "expo": {
-    "name": "savely",
+    "name": "Savely",
+    "description": "Save and organize content from any platform into your personal digital library.",
     "slug": "savelyapp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,18 +11,41 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tuna58.savelyapp"
+      "bundleIdentifier": "com.tuna58.savelyapp",
+      "buildNumber": "1",
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": []
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.tuna58.savelyapp",
+      "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#333333",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundImage": "./assets/images/android-icon-background.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "savely.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
     },
     "web": {
       "output": "static",
@@ -33,11 +57,11 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "imageWidth": 288,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#333333",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#333333"
           }
         }
       ],
@@ -53,13 +77,15 @@
             "text/*"
           ]
         }
-      ]
+      ],
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
+      "privacyPolicyUrl": "https://savely.app/privacy",
       "router": {},
       "eas": {
         "projectId": "14325d77-b475-4e5f-889c-a4d250aa2f90"
