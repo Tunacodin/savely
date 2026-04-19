@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { useSavedItemsStore } from "@/store/saved-items";
 import { useThemeColors } from "@/hooks/use-theme";
+import { DEFAULT_COLLECTIONS, type DefaultCollection } from "@/constants/default-collections";
 
 const PRESET_EMOJIS = [
   "\ud83d\udc23", "\ud83e\udd58", "\u26f1\ufe0f", "\ud83d\uded2\ufe0f", "\ud83d\udcaa", "\ud83d\udcda",
@@ -29,7 +30,7 @@ interface CollectionFormProps {
 }
 
 export function CollectionForm({ onClose, onSuccess }: CollectionFormProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const addCollection = useSavedItemsStore((s) => s.addCollection);
   const { width } = useWindowDimensions();
   const c = useThemeColors();
@@ -39,6 +40,26 @@ export function CollectionForm({ onClose, onSuccess }: CollectionFormProps) {
   const [selectedEmoji, setSelectedEmoji] = useState(PRESET_EMOJIS[0]);
   const [selectedColor, setSelectedColor] = useState(PRESET_COLORS[0]);
   const [isSaving, setIsSaving] = useState(false);
+
+  const lang = (i18n.language as keyof DefaultCollection["name"]) || "tr";
+  const existingNames = useSavedItemsStore((s) => s.collections).map((c) => c.name.toLowerCase());
+
+  const suggestions = useMemo(() => {
+    const q = name.trim().toLowerCase();
+    return DEFAULT_COLLECTIONS.filter((d) => {
+      // Don't suggest already existing collections
+      const dName = (d.name[lang] || d.name.en).toLowerCase();
+      if (existingNames.includes(dName)) return false;
+      if (!q) return true; // Show all when empty
+      return dName.includes(q) || d.keywords.some((k) => k.includes(q));
+    }).slice(0, 8);
+  }, [name, lang, existingNames]);
+
+  const selectSuggestion = (d: DefaultCollection) => {
+    setName(d.name[lang] || d.name.en);
+    setSelectedEmoji(d.emoji);
+    setSelectedColor(d.bgColor);
+  };
 
   const handleCreate = useCallback(async () => {
     if (!name.trim()) return;
@@ -112,6 +133,34 @@ export function CollectionForm({ onClose, onSuccess }: CollectionFormProps) {
             style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, backgroundColor: c.surfaceAlt, borderRadius: 14, paddingHorizontal: 16 }}
           />
         </View>
+
+        {/* Suggestions */}
+        {suggestions.length > 0 && (
+          <View style={{ marginBottom: 20 }}>
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              {suggestions.map((d) => (
+                <Pressable
+                  key={d.slug}
+                  onPress={() => selectSuggestion(d)}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    backgroundColor: c.surfaceAlt,
+                    gap: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 16 }}>{d.emoji}</Text>
+                  <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 13, color: c.textPrimary }}>
+                    {d.name[lang] || d.name.en}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Emoji Select */}
         <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.textPrimary, marginBottom: 12 }}>

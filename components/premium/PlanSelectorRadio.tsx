@@ -1,4 +1,5 @@
 import { View, Text, Pressable } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import type { PremiumPlan } from "@/types";
 
@@ -15,6 +16,7 @@ export function PlanSelectorRadio({
   onSelect,
   badge,
 }: PlanSelectorRadioProps) {
+  const { t } = useTranslation();
   const isBilledYearly = plan.billingPeriod === "yearly";
 
   return (
@@ -45,7 +47,7 @@ export function PlanSelectorRadio({
               isSelected ? "text-white" : "text-zinc-900"
             }`}
           >
-            {isBilledYearly ? "Yıllık" : "Aylık"}
+            {isBilledYearly ? t("premium.yearly") : t("premium.monthly")}
           </Text>
           {badge && (
             <View className="bg-accent-500 rounded-full px-2 py-0.5">
@@ -61,8 +63,8 @@ export function PlanSelectorRadio({
           }`}
         >
           {isBilledYearly
-            ? "Daha ekonomik"
-            : "Esnek fiyatlandırma"}
+            ? t("premium.moreEconomical")
+            : t("premium.flexiblePricing")}
         </Text>
       </View>
 
@@ -80,10 +82,9 @@ export function PlanSelectorRadio({
             isSelected ? "text-zinc-300" : "text-zinc-600"
           }`}
         >
-          /{isBilledYearly ? "yıl" : "ay"}
+          /{isBilledYearly ? t("premium.perYear") : t("premium.perMonth")}
         </Text>
       </View>
     </Pressable>
   );
 }
-

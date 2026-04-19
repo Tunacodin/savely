@@ -1,17 +1,20 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { View, Text, Pressable, ScrollView, TextInput, useWindowDimensions } from "react-native";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 
-const EMOJI_CATEGORIES = {
-  "Yemek": ["🍕", "🍔", "🍟", "🌭", "🍿", "🥓", "🥚", "🍳", "🧈", "🥞", "🧇", "🥐", "🍞", "🥖", "🥨", "🥯", "🧀", "🍗", "🍖", "🌮", "🌯", "🥙", "🥗", "🥘", "🍲", "🍛", "🍝", "🍜", "🍝", "🍠", "🍢", "🍣", "🍤", "🍥", "🥠", "🥮", "🍱", "🍛", "🍣", "🍢"],
-  "Filmler": ["🎬", "🎥", "📽️", "🎞️", "📹", "🎭", "🎪", "🎨", "🖼️"],
-  "Kitaplar": ["📚", "📖", "📝", "📄", "📃", "📑", "📜", "📋"],
-  "Alışveriş": ["🛍️", "🛒", "💳", "💰", "💸", "💵", "💴", "💶", "💷"],
-  "Seyahat": ["✈️", "🚀", "🚁", "🚂", "🚃", "🚄", "🚅", "🚆", "🚇", "🚈", "🚉", "🚊", "🚝", "🚞", "🚋", "🚌", "🚍", "🚎", "🚐", "🚑", "🚒", "🚓", "🚔", "🚕", "🚖", "🚗", "🚘", "🚙", "🚚", "🚛", "🚜", "⛵", "🛶", "🚤", "🛳️", "⛴️", "🛥️"],
-  "Spor": ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🥅", "⛳", "⛸️", "🎣", "🎽", "🎿", "⛷️", "🏂", "🪂", "🏋️", "🤼", "🤸", "⛹️", "🤺", "🤾", "🏌️", "🏇", "🧘", "🏄", "🏊", "🤽", "🚣", "🧗", "🚴", "🚵", "🎯", "🪃", "🪁"],
-  "Müzik": ["🎵", "🎶", "🎤", "🎧", "🎼", "🎹", "🥁", "🎷", "🎺", "🎸", "🪕", "🎻", "🎲", "🧩"],
-  "Sağlık": ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🫰", "🤟", "🤘", "🤙", "👍", "👎"],
-  "Diğer": ["📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "🎬", "📺", "📻", "🧮", "⏱️", "⏲️", "⏰", "🕰️"],
+const EMOJI_CATEGORY_KEYS = ["food", "movies", "books", "shopping", "travel", "sports", "music", "health", "other"] as const;
+
+const EMOJI_DATA: Record<string, string[]> = {
+  food: ["🍕", "🍔", "🍟", "🌭", "🍿", "🥓", "🥚", "🍳", "🧈", "🥞", "🧇", "🥐", "🍞", "🥖", "🥨", "🥯", "🧀", "🍗", "🍖", "🌮", "🌯", "🥙", "🥗", "🥘", "🍲", "🍛", "🍝", "🍜", "🍠", "🍢", "🍣", "🍤", "🍥", "🥠", "🥮", "🍱"],
+  movies: ["🎬", "🎥", "📽️", "🎞️", "📹", "🎭", "🎪", "🎨", "🖼️"],
+  books: ["📚", "📖", "📝", "📄", "📃", "📑", "📜", "📋"],
+  shopping: ["🛍️", "🛒", "💳", "💰", "💸", "💵", "💴", "💶", "💷"],
+  travel: ["✈️", "🚀", "🚁", "🚂", "🚃", "🚄", "🚅", "🚆", "🚇", "🚈", "🚉", "🚊", "🚝", "🚞", "🚋", "🚌", "🚍", "🚎", "🚐", "🚑", "🚒", "🚓", "🚔", "🚕", "🚖", "🚗", "🚘", "🚙", "🚚", "🚛", "🚜", "⛵", "🛶", "🚤", "🛳️", "⛴️", "🛥️"],
+  sports: ["⚽", "🏀", "🏈", "⚾", "🥎", "🎾", "🏐", "🏉", "🥏", "🎱", "🪀", "🏓", "🏸", "🏒", "🏑", "🥍", "🏏", "🥅", "⛳", "⛸️", "🎣", "🎽", "🎿", "⛷️", "🏂", "🪂", "🏋️", "🤼", "🤸", "⛹️", "🤺", "🤾", "🏌️", "🏇", "🧘", "🏄", "🏊", "🤽", "🚣", "🧗", "🚴", "🚵", "🎯", "🪃", "🪁"],
+  music: ["🎵", "🎶", "🎤", "🎧", "🎼", "🎹", "🥁", "🎷", "🎺", "🎸", "🪕", "🎻", "🎲", "🧩"],
+  health: ["❤️", "🧡", "💛", "💚", "💙", "💜", "🖤", "🤍", "🤎", "💔", "💕", "💞", "💓", "💗", "💖", "💘", "💝", "💟", "👋", "🤚", "🖐️", "✋", "🖖", "👌", "🤌", "🤏", "✌️", "🤞", "🫰", "🤟", "🤘", "🤙", "👍", "👎"],
+  other: ["📱", "💻", "⌨️", "🖱️", "🖨️", "📷", "📹", "🎥", "🎬", "📺", "📻", "🧮", "⏱️", "⏲️", "⏰", "🕰️"],
 };
 
 interface EmojiPickerProps {
@@ -20,20 +23,16 @@ interface EmojiPickerProps {
 }
 
 export function EmojiPicker({ selectedEmoji, onSelectEmoji }: EmojiPickerProps) {
+  const { t } = useTranslation();
   const [searchText, setSearchText] = useState("");
-  const [activeCategory, setActiveCategory] = useState("Yemek");
+  const [activeCategory, setActiveCategory] = useState<string>(EMOJI_CATEGORY_KEYS[0]);
   const { width } = useWindowDimensions();
 
-  const categories = Object.keys(EMOJI_CATEGORIES) as (keyof typeof EMOJI_CATEGORIES)[];
-
   const filteredEmojis = useMemo(() => {
-    const categoryEmojis = EMOJI_CATEGORIES[activeCategory as keyof typeof EMOJI_CATEGORIES] || [];
+    const categoryEmojis = EMOJI_DATA[activeCategory] || [];
     if (!searchText.trim()) return categoryEmojis;
-    
     const query = searchText.toLowerCase();
-    return categoryEmojis.filter((emoji) =>
-      emoji.toLowerCase().includes(query)
-    );
+    return categoryEmojis.filter((emoji) => emoji.toLowerCase().includes(query));
   }, [activeCategory, searchText]);
 
   const itemsPerRow = Math.floor((width - 40) / 50);
@@ -47,7 +46,7 @@ export function EmojiPicker({ selectedEmoji, onSelectEmoji }: EmojiPickerProps) 
           <TextInput
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Emoji ara..."
+            placeholder={t("emojiPicker.search")}
             placeholderTextColor="#A1A1AA"
             className="flex-1 font-sans text-sm text-zinc-800 ml-2"
           />
@@ -61,23 +60,23 @@ export function EmojiPicker({ selectedEmoji, onSelectEmoji }: EmojiPickerProps) 
         className="px-4 py-3"
         contentContainerClassName="gap-2"
       >
-        {categories.map((category) => (
+        {EMOJI_CATEGORY_KEYS.map((key) => (
           <Pressable
-            key={category}
+            key={key}
             onPress={() => {
-              setActiveCategory(category);
+              setActiveCategory(key);
               setSearchText("");
             }}
             className={`px-4 py-1.5 rounded-full ${
-              activeCategory === category ? "bg-primary-500" : "bg-white border border-zinc-200"
+              activeCategory === key ? "bg-primary-500" : "bg-white border border-zinc-200"
             }`}
           >
             <Text
               className={`font-sans-medium text-xs ${
-                activeCategory === category ? "text-white" : "text-zinc-700"
+                activeCategory === key ? "text-white" : "text-zinc-700"
               }`}
             >
-              {category}
+              {t(`emojiPicker.${key}`)}
             </Text>
           </Pressable>
         ))}

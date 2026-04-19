@@ -23,6 +23,7 @@ import {
 } from "@/utils/platform-detector";
 import { extractMetadata } from "@/services/metadata";
 import { isExpiringUrl, persistImage } from "@/lib/storage";
+import { DEFAULT_COLLECTIONS, type DefaultCollection } from "@/constants/default-collections";
 import type { PlatformName } from "@/components/ui/platform-badge";
 import type { ContentType, SavedItemMetadata } from "@/types";
 
@@ -40,11 +41,12 @@ export function SaveItemForm({
   onSuccess,
 }: SaveItemFormProps) {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const c = useThemeColors();
   const addItem = useSavedItemsStore((s) => s.addItem);
   const updateItem = useSavedItemsStore((s) => s.updateItem);
   const enrichItem = useSavedItemsStore((s) => s.enrichItem);
+  const addCollection = useSavedItemsStore((s) => s.addCollection);
   const collections = useSavedItemsStore((s) => s.collections);
 
   const [inputText, setInputText] = useState(initialUrl ?? "");
@@ -177,11 +179,35 @@ export function SaveItemForm({
     onSuccess?.();
   }, [url, title, metadataTitle, metadataDescription, metadata, metadataImageUrl, imageAspectRatio, platform, contentType, contentId, selectedCollectionId, addItem, enrichItem, updateItem, onSuccess]);
 
+  const lang = (i18n.language as keyof DefaultCollection["name"]) || "tr";
+
+  const canAdd = useSavedItemsStore((s) => s.canAddCollection)();
+
   const filteredCollections = useMemo(() => {
-    if (!collectionSearch.trim()) return collections;
-    const query = collectionSearch.toLowerCase();
-    return collections.filter((col) => col.name.toLowerCase().includes(query));
-  }, [collections, collectionSearch]);
+    const q = collectionSearch.trim().toLowerCase();
+    if (!q) return collections;
+    // Match user collections + default collection keywords
+    return collections.filter((col) => {
+      if (col.name.toLowerCase().includes(q)) return true;
+      // Also match by default collection keywords
+      const def = DEFAULT_COLLECTIONS.find(
+        (d) => (d.name[lang] || d.name.en).toLowerCase() === col.name.toLowerCase()
+      );
+      return def?.keywords.some((k) => k.includes(q)) ?? false;
+    });
+  }, [collections, collectionSearch, lang]);
+
+  // Default suggestions — only show collections that DON'T already exist
+  const defaultSuggestions = useMemo(() => {
+    const q = collectionSearch.trim().toLowerCase();
+    if (!q || !canAdd) return [];
+    const existingNames = collections.map((c) => c.name.toLowerCase());
+    return DEFAULT_COLLECTIONS.filter((d) => {
+      const dName = (d.name[lang] || d.name.en).toLowerCase();
+      if (existingNames.includes(dName)) return false;
+      return dName.includes(q) || d.keywords.some((k) => k.includes(q));
+    }).slice(0, 5);
+  }, [collectionSearch, collections, lang, canAdd]);
 
   const isFormValid = !!url;
 
@@ -331,13 +357,42 @@ export function SaveItemForm({
           {filteredCollections.map((col) => (
             <Pressable
               key={col.id}
-              onPress={() => setSelectedCollectionId(col.id)}
+              onPress={() => { setSelectedCollectionId(col.id); setCollectionSearch(""); }}
               style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: selectedCollectionId === col.id ? c.buttonPrimary : c.surfaceAlt, gap: 6 }}
             >
               <Text style={{ fontSize: 14 }}>{col.emoji}</Text>
               <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: selectedCollectionId === col.id ? c.buttonPrimaryText : c.textMuted }}>
                 {col.name}
               </Text>
+            </Pressable>
+          ))}
+
+          {/* Default collection suggestions */}
+          {defaultSuggestions.map((d) => (
+            <Pressable
+              key={d.slug}
+              onPress={async () => {
+                try {
+                  const id = await addCollection({
+                    name: d.name[lang] || d.name.en,
+                    emoji: d.emoji,
+                    bgColor: d.bgColor,
+                    itemCount: 0,
+                  });
+                  setSelectedCollectionId(id);
+                  setCollectionSearch("");
+                } catch (e) {
+                  // Collection limit reached or auth error
+                  console.log("Failed to create collection:", e);
+                }
+              }}
+              style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: c.surfaceAlt, gap: 6, borderWidth: 1.5, borderColor: c.border }}
+            >
+              <Text style={{ fontSize: 14 }}>{d.emoji}</Text>
+              <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textPrimary }}>
+                {d.name[lang] || d.name.en}
+              </Text>
+              <MingCuteIcon name="add-line" size={14} color={c.textTertiary} />
             </Pressable>
           ))}
 

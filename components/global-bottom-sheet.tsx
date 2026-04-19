@@ -9,6 +9,7 @@ import {
 } from "@gorhom/bottom-sheet";
 import type { BottomSheetFooterProps } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
@@ -34,20 +35,23 @@ export function GlobalBottomSheetProvider({
   const { width } = useWindowDimensions();
   const { t, i18n } = useTranslation();
   const c = useThemeColors();
+  const insets = useSafeAreaInsets();
   const updateItem = useSavedItemsStore((s) => s.updateItem);
   const removeItem = useSavedItemsStore((s) => s.removeItem);
   const itemDetailSheetRef = useRef<BottomSheetModal>(null);
   const [selectedItem, setSelectedItem] = useState<SavedItem | null>(null);
   const [editedTitle, setEditedTitle] = useState("");
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [expandedDescription, setExpandedDescription] = useState(false);
+  const [expandedTitle, setExpandedTitle] = useState(false);
+  const [titleClamped, setTitleClamped] = useState(false);
 
   useEffect(() => {
     _openItemDetail = (item) => {
       setSelectedItem(item);
       setEditedTitle(item.title);
       setIsEditingTitle(false);
-      setExpandedDescription(false);
+      setExpandedTitle(false);
+      setTitleClamped(false);
       itemDetailSheetRef.current?.present();
     };
     return () => {
@@ -113,13 +117,13 @@ export function GlobalBottomSheetProvider({
       if (!selectedItem) return null;
       return (
         <BottomSheetFooter {...props} bottomInset={0}>
-          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 48, backgroundColor: c.sheetBg, borderTopWidth: 1, borderTopColor: c.divider }}>
+          <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: insets.bottom + 12, backgroundColor: c.sheetBg }}>
             <View style={{ flexDirection: "row", gap: 10 }}>
               {selectedItem.url && (
                 <Pressable
                   onPress={handleOpenUrl}
                   style={{
-                    flex: 5,
+                    flex: 1,
                     height: 50,
                     borderRadius: 14,
                     backgroundColor: c.buttonPrimary,
@@ -143,7 +147,7 @@ export function GlobalBottomSheetProvider({
               <Pressable
                 onPress={handleShare}
                 style={{
-                  flex: 3,
+                  flex: 1,
                   height: 50,
                   borderRadius: 14,
                   backgroundColor: c.buttonSecondary,
@@ -157,20 +161,6 @@ export function GlobalBottomSheetProvider({
                 <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 15, color: c.textPrimary }}>
                   {t("itemDetail.share")}
                 </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={handleDelete}
-                style={{
-                  flex: 2,
-                  height: 50,
-                  borderRadius: 14,
-                  backgroundColor: c.errorBg,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <MingCuteIcon name="delete-2-line" size={20} color={c.error} />
               </Pressable>
             </View>
           </View>
@@ -195,7 +185,7 @@ export function GlobalBottomSheetProvider({
       {/* Item detail sheet */}
       <BottomSheetModal
         ref={itemDetailSheetRef}
-        snapPoints={["60%", "92%"]}
+        snapPoints={[imageAspectRatio > 1 ? "70%" : "60%", "92%"]}
         enableDynamicSizing={false}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
@@ -209,7 +199,7 @@ export function GlobalBottomSheetProvider({
               <View
                 style={{
                   width,
-                  height: Math.min(imageHeight, width * 1.4),
+                  height: Math.min(imageHeight, width * 0.85),
                   backgroundColor: c.surfaceAlt,
                   borderTopLeftRadius: 20,
                   borderTopRightRadius: 20,
@@ -288,21 +278,47 @@ export function GlobalBottomSheetProvider({
                   </View>
                 </View>
               ) : (
-                <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontFamily: "Rubik_600SemiBold",
-                      fontSize: 18,
-                      color: c.text,
-                      lineHeight: 26,
-                    }}
-                  >
-                    {selectedItem?.title.split("#")[0].trim()}
-                  </Text>
-                  <Pressable onPress={() => setIsEditingTitle(true)} hitSlop={8}>
-                    <MingCuteIcon name="edit-2-line" size={20} color={c.textSecondary} />
-                  </Pressable>
+                <View style={{ gap: 4 }}>
+                  {/* Hidden full text to measure real line count */}
+                  {!expandedTitle && (
+                    <Text
+                      style={{
+                        position: "absolute",
+                        opacity: 0,
+                        fontFamily: "Rubik_600SemiBold",
+                        fontSize: 18,
+                        lineHeight: 26,
+                        paddingRight: 40,
+                      }}
+                      onTextLayout={(e) => setTitleClamped(e.nativeEvent.lines.length > 4)}
+                    >
+                      {selectedItem?.title.split("#")[0].trim()}
+                    </Text>
+                  )}
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontFamily: "Rubik_600SemiBold",
+                        fontSize: 18,
+                        color: c.text,
+                        lineHeight: 26,
+                      }}
+                      numberOfLines={expandedTitle ? undefined : 4}
+                    >
+                      {selectedItem?.title.split("#")[0].trim()}
+                    </Text>
+                    <Pressable onPress={() => setIsEditingTitle(true)} hitSlop={8}>
+                      <MingCuteIcon name="edit-2-line" size={20} color={c.textSecondary} />
+                    </Pressable>
+                  </View>
+                  {titleClamped && !expandedTitle && (
+                    <Pressable onPress={() => setExpandedTitle(true)}>
+                      <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textTertiary }}>
+                        {t("itemDetail.showMore")}
+                      </Text>
+                    </Pressable>
+                  )}
                 </View>
               )}
 

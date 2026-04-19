@@ -1,4 +1,5 @@
 import { View, Text } from "react-native";
+import { useTranslation } from "react-i18next";
 import type { PremiumPlan } from "@/types";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 
@@ -13,6 +14,7 @@ export function PremiumPlanCard({
   isSelected = false,
   badge,
 }: PremiumPlanCardProps) {
+  const { t } = useTranslation();
   const isPro = plan.tier === "pro";
 
   return (
@@ -47,9 +49,7 @@ export function PremiumPlanCard({
           isPro ? "text-zinc-300" : "text-zinc-600"
         }`}
       >
-        {plan.tier === "free"
-          ? "Dijital düzeniinizi temel düzeyde oluşturun. Kütüphanenizi ücretsiz olarak oluşturun."
-          : "Kütüphanenizdeki tüm sınırları kaldırın. Binlerce içeriği kolayca gruplayın."}
+        {plan.tier === "free" ? t("premium.freeDesc") : t("premium.proDesc")}
       </Text>
 
       {/* Features */}

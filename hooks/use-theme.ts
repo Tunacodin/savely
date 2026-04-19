@@ -141,8 +141,7 @@ export function useThemeColors(): ThemeColors {
   const systemScheme = useColorScheme();
   const mode = useThemeStore((s) => s.mode);
 
-  const isDark =
-    mode === "dark" || (mode === "system" && systemScheme === "dark");
-
-  return isDark ? darkColors : lightColors;
+  if (mode === "dark") return darkColors;
+  if (mode === "light") return lightColors;
+  return systemScheme === "dark" ? darkColors : lightColors;
 }
