@@ -50,10 +50,10 @@ function EditCollectionModal({
 
   const handleDelete = useCallback(() => {
     if (!collection) return;
-    Alert.alert("Koleksiyonu Sil", "Bu koleksiyonu silmek istedi\u011fine emin misin? \u0130\u00e7erikler silinmez.", [
-      { text: "\u0130ptal", style: "cancel" },
+    Alert.alert(t("collections.deleteCollection"), t("collections.deleteConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Sil",
+        text: t("common.delete"),
         style: "destructive",
         onPress: () => {
           removeCollection(collection.id);
@@ -69,11 +69,11 @@ function EditCollectionModal({
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, height: 60 }}>
           <Pressable onPress={onClose} hitSlop={8}>
-            <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary }}>{"\u0130ptal"}</Text>
+            <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary }}>{t("common.cancel")}</Text>
           </Pressable>
-          <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 17, color: c.textPrimary }}>{"Koleksiyonu D\u00fczenle"}</Text>
+          <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 17, color: c.textPrimary }}>{t("collections.editCollection")}</Text>
           <Pressable onPress={handleSave} hitSlop={8}>
-            <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 16, color: c.text }}>Kaydet</Text>
+            <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 16, color: c.text }}>{t("common.save")}</Text>
           </Pressable>
         </View>
 
@@ -87,7 +87,7 @@ function EditCollectionModal({
 
           {/* Name */}
           <View style={{ gap: 8 }}>
-            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>{"\u0130sim"}</Text>
+            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>{t("collections.name")}</Text>
             <TextInput
               value={name}
               onChangeText={setName}
@@ -100,14 +100,14 @@ function EditCollectionModal({
                 paddingHorizontal: 16,
                 height: 52,
               }}
-              placeholder={"Koleksiyon ad\u0131"}
+              placeholder={t("collections.namePlaceholder")}
               placeholderTextColor={c.textTertiary}
             />
           </View>
 
           {/* Emoji */}
           <View style={{ gap: 8 }}>
-            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>{"\u0130kon"}</Text>
+            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>{t("collections.icon")}</Text>
             <Pressable
               onPress={() => setShowEmojiPicker(!showEmojiPicker)}
               style={{
@@ -121,7 +121,7 @@ function EditCollectionModal({
               }}
             >
               <Text style={{ fontSize: 24 }}>{emoji}</Text>
-              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, flex: 1 }}>{"De\u011fi\u015ftirmek i\u00e7in dokun"}</Text>
+              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, flex: 1 }}>{t("collections.tapToChange")}</Text>
               <MingCuteIcon name="right-small-line" size={20} color={c.textTertiary} />
             </Pressable>
             {showEmojiPicker && (
@@ -131,7 +131,7 @@ function EditCollectionModal({
 
           {/* Color */}
           <View style={{ gap: 8 }}>
-            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>Arka Plan Rengi</Text>
+            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textSecondary }}>{t("collections.bgColor")}</Text>
             <Pressable
               onPress={() => setShowColorPicker(!showColorPicker)}
               style={{
@@ -145,7 +145,7 @@ function EditCollectionModal({
               }}
             >
               <View style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: bgColor, borderWidth: 1, borderColor: c.border }} />
-              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, flex: 1 }}>{"De\u011fi\u015ftirmek i\u00e7in dokun"}</Text>
+              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, flex: 1 }}>{t("collections.tapToChange")}</Text>
               <MingCuteIcon name="right-small-line" size={20} color={c.textTertiary} />
             </Pressable>
             {showColorPicker && (
@@ -168,7 +168,7 @@ function EditCollectionModal({
             }}
           >
             <MingCuteIcon name="delete-2-line" size={20} color={c.error} />
-            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.error }}>Koleksiyonu Sil</Text>
+            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.error }}>{t("collections.deleteCollection")}</Text>
           </Pressable>
         </ScrollView>
       </SafeAreaView>
@@ -184,7 +184,7 @@ export default function CollectionsScreen() {
   const c = useThemeColors();
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
       {/* Top Bar */}
       <View
         style={{
@@ -200,6 +200,17 @@ export default function CollectionsScreen() {
         </Text>
       </View>
 
+      {collections.length === 0 ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
+          <MingCuteIcon name="folder-line" size={56} color={c.border} />
+          <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 18, color: c.textPrimary, marginTop: 20, textAlign: "center" }}>
+            {t("collections.emptyTitle")}
+          </Text>
+          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textTertiary, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+            {t("collections.emptyDesc")}
+          </Text>
+        </View>
+      ) : (
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 100 }}
@@ -263,12 +274,13 @@ export default function CollectionsScreen() {
         ))}
         </View>
       </ScrollView>
+      )}
 
       <EditCollectionModal
         collection={editingCollection}
         visible={!!editingCollection}
         onClose={() => setEditingCollection(null)}
       />
-    </SafeAreaView>
+    </View>
   );
 }

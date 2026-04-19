@@ -5,10 +5,10 @@ import {
   Rubik_700Bold,
   useFonts,
 } from "@expo-google-fonts/rubik";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useThemeStore } from "@/store/theme";
@@ -18,8 +18,11 @@ import { GlobalBottomSheetProvider } from "@/components/global-bottom-sheet";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth";
 import { useSavedItemsStore } from "@/store/saved-items";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEFAULT_COLLECTIONS } from "@/constants/default-collections";
+import { registerForPushNotifications, useNotificationSetup } from "@/hooks/use-notifications";
+import i18next from "@/lib/i18n";
 import "react-native-reanimated";
-import "@/lib/i18n";
 
 import "../global.css";
 
@@ -38,29 +41,49 @@ function ShareIntentHandler({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+async function createPendingCollections(addCollection: (c: any) => Promise<string>) {
+  try {
+    const raw = await AsyncStorage.getItem("pending_collections");
+    if (!raw) return;
+    const slugs: string[] = JSON.parse(raw);
+    const lang = (i18next.language as "tr" | "en" | "fr" | "es") || "tr";
+    for (const slug of slugs) {
+      const def = DEFAULT_COLLECTIONS.find((d) => d.slug === slug);
+      if (def) {
+        await addCollection({
+          name: def.name[lang] || def.name.en,
+          emoji: def.emoji,
+          bgColor: def.bgColor,
+          itemCount: 0,
+        });
+      }
+    }
+    await AsyncStorage.removeItem("pending_collections");
+  } catch {}
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { setSession, fetchProfile, session, isLoading } = useAuthStore();
-  const { loadUserData, clearUserData } = useSavedItemsStore();
+  const { loadUserData, clearUserData, addCollection } = useSavedItemsStore();
   const router = useRouter();
-  const segments = useSegments();
+
+  useNotificationSetup();
+  const initializedRef = useRef(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log("[AuthGate] getSession:", session?.user?.email ?? "no session");
-      setSession(session);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        loadUserData(session.user.id);
-      }
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("[AuthGate] onAuthStateChange:", _event, session?.user?.email ?? "no session");
       setSession(session);
       if (session?.user) {
         fetchProfile(session.user.id);
         loadUserData(session.user.id);
+        // Only run once per app lifecycle
+        if (!initializedRef.current) {
+          initializedRef.current = true;
+          registerForPushNotifications();
+          createPendingCollections(addCollection);
+        }
       } else {
+        initializedRef.current = false;
         clearUserData();
       }
     });
@@ -68,23 +91,27 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Only redirect on auth state changes
+  const prevSessionRef = useRef<boolean | null>(null);
+
   useEffect(() => {
-    console.log("[AuthGate] nav effect — session:", !!session, "isLoading:", isLoading, "segments:", segments[0]);
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
-    const inOnboarding = segments[0] === "(onboarding)";
+    const hadSession = prevSessionRef.current;
+    const hasSession = !!session;
+    prevSessionRef.current = hasSession;
 
-    if (!session && !inAuthGroup && !inOnboarding) {
-      console.log("[AuthGate] → redirecting to login");
-      router.replace("/(auth)/login");
-    } else if (session && (inAuthGroup || inOnboarding)) {
-      console.log("[AuthGate] → redirecting to tabs");
-      router.replace("/(tabs)");
-    } else {
-      console.log("[AuthGate] → no redirect needed");
+    // Skip initial render — index.tsx handles that
+    if (hadSession === null) return;
+
+    if (hadSession !== hasSession) {
+      if (hasSession) {
+        router.replace("/(tabs)");
+      } else {
+        router.replace("/(auth)/login");
+      }
     }
-  }, [session, isLoading, segments]);
+  }, [session, isLoading]);
 
   return <>{children}</>;
 }
@@ -97,7 +124,8 @@ export default function RootLayout() {
     Rubik_700Bold,
   });
   const [showSplash, setShowSplash] = useState(true);
-  const systemScheme = useColorScheme();
+  const [authResolved, setAuthResolved] = useState(false);
+  const sessionRef = useRef<boolean>(false);
   const themeMode = useThemeStore((s) => s.mode);
   const statusBarStyle =
     themeMode === "system"
@@ -106,38 +134,51 @@ export default function RootLayout() {
         ? "light"
         : "dark";
 
+  // Resolve auth independently before rendering tree
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      sessionRef.current = !!session;
+      useAuthStore.getState().setSession(session);
+      if (session?.user) {
+        useAuthStore.getState().fetchProfile(session.user.id);
+        useSavedItemsStore.getState().loadUserData(session.user.id);
+      }
+      setAuthResolved(true);
+    });
+  }, []);
 
-  if (!fontsLoaded) {
+  useEffect(() => {
+    if (fontsLoaded && authResolved) {
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [fontsLoaded, authResolved]);
+
+  if (!fontsLoaded || !authResolved) {
     return null;
   }
 
+  const initialRoute = sessionRef.current ? "(tabs)" : "(auth)";
+
   return (
-    <GestureHandlerRootView className="flex-1">
+    <GestureHandlerRootView style={{ flex: 1 }}>
       <ShareIntentProvider>
         <GlobalBottomSheetProvider>
           <AuthGate>
           <ShareIntentHandler>
-            <Stack>
-              <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="account-settings"
-                options={{ headerShown: false }}
-              />
-              <Stack.Screen
-                name="premium-plan"
-                options={{ headerShown: false }}
-              />
+            <Stack
+              initialRouteName={initialRoute}
+              screenOptions={{ headerShown: false, animation: "slide_from_right" }}
+            >
+              <Stack.Screen name="index" options={{ animation: "none" }} />
+              <Stack.Screen name="(onboarding)" />
+              <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
+              <Stack.Screen name="(auth)" options={{ animation: "none" }} />
+              <Stack.Screen name="account-settings" />
+              <Stack.Screen name="premium-plan" />
+              <Stack.Screen name="notification-settings" />
               <Stack.Screen
                 name="save"
                 options={{
-                  headerShown: false,
                   presentation: "transparentModal",
                   animation: "fade",
                 }}
@@ -145,15 +186,11 @@ export default function RootLayout() {
               <Stack.Screen
                 name="new-collection"
                 options={{
-                  headerShown: false,
                   presentation: "transparentModal",
                   animation: "fade",
                 }}
               />
-              <Stack.Screen
-                name="collection-detail"
-                options={{ headerShown: false }}
-              />
+              <Stack.Screen name="collection-detail" />
               <Stack.Screen name="+not-found" />
             </Stack>
           </ShareIntentHandler>

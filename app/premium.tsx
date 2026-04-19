@@ -1,11 +1,13 @@
 import { ScrollView, View, Text, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { useSavedItemsStore } from "@/store/saved-items";
 
 export default function PremiumScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const subscription = useSavedItemsStore((s) => s.subscription);
 
   return (
@@ -45,7 +47,7 @@ export default function PremiumScreen() {
           <View className="bg-primary-50 rounded-2xl p-5 border border-primary-200">
             <View className="flex-row items-center justify-between mb-3">
               <Text className="font-sans-medium text-sm text-primary-700">
-                Geçerli Plan
+                {t("premium.currentPlan")}
               </Text>
               <View className="px-3 py-1 rounded-full bg-primary-600">
                 <Text className="font-sans-semibold text-xs text-white">
@@ -62,7 +64,7 @@ export default function PremiumScreen() {
         {/* Features */}
         <View className="px-5 mb-8">
           <Text className="font-sans-semibold text-lg text-zinc-900 mb-4">
-            Premium Özellikleri
+            {t("premium.features")}
           </Text>
           <View className="gap-3">
             {subscription.currentPlan?.features.map((feature, index) => (
@@ -89,13 +91,12 @@ export default function PremiumScreen() {
             className="bg-primary-500 rounded-2xl py-4 items-center mb-4"
           >
             <Text className="font-sans-semibold text-base text-white">
-              {subscription.tier === "pro" ? "Plan Yönet" : "Premium'a Geç"}
+              {subscription.tier === "pro" ? t("premium.managePlan") : t("premium.goPremium")}
             </Text>
           </Pressable>
 
           <Text className="font-sans text-xs text-zinc-500 text-center leading-5">
-            Abonielik otomatik olarak yenilenir. İstediğiniz zaman iptal
-            edebilirsiniz.
+            {t("premium.autoRenew")}
           </Text>
         </View>
       </ScrollView>

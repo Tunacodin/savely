@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { View, Text, TextInput, Pressable, FlatList } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
@@ -123,7 +122,7 @@ export default function SearchScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
       {/* Search Bar */}
       <View style={{ height: 64, paddingHorizontal: 16, justifyContent: "center" }}>
         <View
@@ -189,8 +188,20 @@ export default function SearchScreen() {
               colors={c}
             />
           )}
+          contentContainerStyle={recentSearches.length === 0 ? { flex: 1 } : undefined}
+          ListEmptyComponent={
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <MingCuteIcon name="search-line" size={48} color={c.border} />
+              <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 18, color: c.textPrimary, marginTop: 16 }}>
+                {t("search.emptyTitle")}
+              </Text>
+              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textTertiary, marginTop: 6, textAlign: "center", paddingHorizontal: 40 }}>
+                {t("search.emptySubtitle")}
+              </Text>
+            </View>
+          }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }

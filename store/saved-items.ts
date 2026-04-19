@@ -58,6 +58,7 @@ interface SavedItemsState {
   updateItem: (id: string, updates: Partial<SavedItem>) => Promise<void>;
   enrichItem: (id: string, metadata: SavedItemMetadata, title?: string, imageUrl?: string) => Promise<void>;
 
+  canAddCollection: () => boolean;
   addCollection: (collection: Omit<Collection, "id" | "createdAt">) => Promise<string>;
   updateCollection: (id: string, updates: Partial<Pick<Collection, "name" | "emoji" | "bgColor">>) => Promise<void>;
   removeCollection: (id: string) => Promise<void>;
@@ -270,6 +271,12 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
         updated_at: now,
       })
       .eq("id", id);
+  },
+
+  canAddCollection: () => {
+    const { collections, subscription } = get();
+    if (subscription.tier === "pro") return true;
+    return collections.length < 3;
   },
 
   addCollection: async (collection) => {

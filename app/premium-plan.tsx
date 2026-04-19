@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { ScrollView, View, Text, Pressable, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { useSavedItemsStore } from "@/store/saved-items";
 import { useShallow } from "zustand/react/shallow";
@@ -11,6 +12,7 @@ import type { PremiumPlan } from "@/types";
 export default function PremiumPlanScreen() {
   const router = useRouter();
   const c = useThemeColors();
+  const { t } = useTranslation();
   const { availablePlans, subscription, upgradeToPremium } = useSavedItemsStore(
     useShallow((s) => ({
       availablePlans: s.availablePlans,
@@ -58,7 +60,7 @@ export default function PremiumPlanScreen() {
         <Text
           style={{ fontFamily: "Rubik_500Medium", fontSize: 20, color: c.textPrimary }}
         >
-          {"Plan\u0131n\u0131z\u0131 se\u00e7in"}
+          {t("premium.choosePlan")}
         </Text>
       </View>
 
@@ -93,7 +95,7 @@ export default function PremiumPlanScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: selectedPlan?.id === yearlyPlan.id ? c.textPrimary : c.textMuted }}>
-                  {"Y\u0131ll\u0131k"}
+                  {t("premium.yearly")}
                 </Text>
                 <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 20, color: c.textPrimary }}>
                   {`$${(yearlyPlan.price / 12).toFixed(2)} /month`}
@@ -134,7 +136,7 @@ export default function PremiumPlanScreen() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: selectedPlan?.id === monthlyPlan.id ? c.textPrimary : c.textMuted }}>
-                  {"Ayl\u0131k"}
+                  {t("premium.monthly")}
                 </Text>
                 <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 20, color: c.textPrimary }}>
                   {`$${monthlyPlan.price.toFixed(2)} /month`}
@@ -149,7 +151,7 @@ export default function PremiumPlanScreen() {
               <View style={{ borderRadius: 16, padding: 20, backgroundColor: c.surface, flex: 1 }}>
                 <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 32, color: c.textPrimary, marginBottom: 4 }}>Free</Text>
                 <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 12, color: c.textMuted, marginBottom: 16, lineHeight: 16 }}>
-                  {"Dijital d\u00fczeninizi temel d\u00fczeyde olu\u015fturun. K\u00fct\u00fcphanenizi \u00fccretsiz olarak olu\u015fturun."}
+                  {t("premium.freeDesc")}
                 </Text>
                 {freePlan.features.map((f, i) => (
                   <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -163,7 +165,7 @@ export default function PremiumPlanScreen() {
               <View style={{ borderRadius: 16, padding: 20, backgroundColor: c.buttonPrimary, flex: 1 }}>
                 <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 32, color: c.buttonPrimaryText, marginBottom: 4 }}>Pro</Text>
                 <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 12, color: c.buttonSecondaryText, marginBottom: 16, lineHeight: 16 }}>
-                  {"K\u00fct\u00fcphanenizdeki t\u00fcm s\u0131n\u0131rlar\u0131 kald\u0131r\u0131n. Binlerce i\u00e7eri\u011fi kolayca grupland\u0131r\u0131n."}
+                  {t("premium.proDesc")}
                 </Text>
                 {proPlans[0].features.map((f, i) => (
                   <View key={i} style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
@@ -207,7 +209,7 @@ export default function PremiumPlanScreen() {
                 color: c.buttonPrimaryText,
               }}
             >
-              {subscription.tier === "pro" ? "Zaten Premium'sun" : "Premiuma Ge\u00e7"}
+              {subscription.tier === "pro" ? t("premium.alreadyPremium") : t("premium.upgradeToPremium")}
             </Text>
           )}
         </Pressable>

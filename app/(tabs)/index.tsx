@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, useWindowDimensions } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
+import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { SaveItemCard } from "@/components/save-item-card";
 import { openItemDetail } from "@/components/global-bottom-sheet";
 import { useSavedItemsStore } from "@/store/saved-items";
@@ -39,7 +39,7 @@ export default function HomeScreen() {
   });
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
+    <View style={{ flex: 1, backgroundColor: c.background }}>
       {/* Top Bar */}
       <View
         style={{
@@ -54,25 +54,36 @@ export default function HomeScreen() {
         </Text>
       </View>
 
-      {/* Masonry Grid */}
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      >
-        <View className="flex-row" style={{ gap }}>
-          <View className="flex-1" style={{ gap }}>
-            {leftColumn.map((item) => (
-              <SaveItemCard key={item.id} item={item} width={cardWidth} onPress={() => openItemDetail(item)} />
-            ))}
-          </View>
-          <View className="flex-1" style={{ gap }}>
-            {rightColumn.map((item) => (
-              <SaveItemCard key={item.id} item={item} width={cardWidth} onPress={() => openItemDetail(item)} />
-            ))}
-          </View>
+      {savedItems.length === 0 ? (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 }}>
+          <MingCuteIcon name="bookmark-line" size={56} color={c.border} />
+          <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 18, color: c.textPrimary, marginTop: 20, textAlign: "center" }}>
+            {t("home.emptyTitle")}
+          </Text>
+          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textTertiary, marginTop: 8, textAlign: "center", lineHeight: 20 }}>
+            {t("home.emptyDesc")}
+          </Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ padding, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View className="flex-row" style={{ gap }}>
+            <View className="flex-1" style={{ gap }}>
+              {leftColumn.map((item) => (
+                <SaveItemCard key={item.id} item={item} width={cardWidth} onPress={() => openItemDetail(item)} />
+              ))}
+            </View>
+            <View className="flex-1" style={{ gap }}>
+              {rightColumn.map((item) => (
+                <SaveItemCard key={item.id} item={item} width={cardWidth} onPress={() => openItemDetail(item)} />
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      )}
+    </View>
   );
 }

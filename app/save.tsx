@@ -6,6 +6,7 @@ import { useShareIntentContext } from "expo-share-intent";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { SaveItemForm } from "@/components/forms/SaveItemForm";
 import { extractUrlFromText } from "@/utils/platform-detector";
+import { useThemeColors } from "@/hooks/use-theme";
 
 export default function SaveScreen() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function SaveScreen() {
   const { shareIntent, resetShareIntent } = useShareIntentContext();
 
   const [isBottomSheetVisible, setIsBottomSheetVisible] = useState(true);
+  const c = useThemeColors();
 
   const getInitialUrl = () => {
     if (routeUrl) return routeUrl;
@@ -45,7 +47,7 @@ export default function SaveScreen() {
           enablePanDownToClose
           enableDynamicSizing={false}
           handleComponent={null}
-          backgroundStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24 }}
+          backgroundStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.sheetBg }}
         >
           <BottomSheetView style={{ flex: 1 }}>
             <SaveItemForm
