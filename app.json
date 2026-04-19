@@ -2,7 +2,7 @@
   "expo": {
     "name": "Savely",
     "description": "Save and organize content from any platform into your personal digital library.",
-    "slug": "savelyapp",
+    "slug": "savely",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -78,7 +78,16 @@
           ]
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "color": "#333333",
+          "sounds": [],
+          "androidMode": "default",
+          "androidCollapsedTitle": "Savely"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
@@ -88,9 +97,9 @@
       "privacyPolicyUrl": "https://savely.app/privacy",
       "router": {},
       "eas": {
-        "projectId": "14325d77-b475-4e5f-889c-a4d250aa2f90"
+        "projectId": "6244da3c-0b3a-4b80-88a5-f8f4558b27b8"
       }
     },
-    "owner": "tuna58"
+    "owner": "tunadev58"
   }
 }

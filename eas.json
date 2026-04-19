@@ -34,7 +34,7 @@
         "appleTeamId": "APPLE_TEAM_ID"
       },
       "android": {
-        "serviceAccountKeyPath": "./google-service-account.json",
+        "serviceAccountKeyPath": "./savely-google-console-key.json",
         "track": "internal"
       }
     }
