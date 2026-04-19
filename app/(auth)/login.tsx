@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as WebBrowser from "expo-web-browser";
-import Svg, { Path, G, ClipPath, Rect, Defs } from "react-native-svg";
+import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme";
 
@@ -21,20 +21,13 @@ function GoogleIcon() {
   );
 }
 
-function AppleIcon({ color }: { color: string }) {
-  return (
-    <Svg width={20} height={20} viewBox="0 0 24 24">
-      <Path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" fill={color} />
-    </Svg>
-  );
-}
-
 export default function LoginScreen() {
   const router = useRouter();
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const c = useThemeColors();
+  const { t } = useTranslation();
 
-  const handleOAuth = async (provider: "google" | "apple") => {
+  const handleOAuth = async (provider: "google") => {
     setLoadingProvider(provider);
     try {
       const redirectTo = "savely://auth/callback";
@@ -74,7 +67,7 @@ export default function LoginScreen() {
         }
       }
     } catch (err: any) {
-      Alert.alert("Hata", err.message ?? "Giri\u015f yap\u0131lamad\u0131.");
+      Alert.alert(t("common.error"), err.message ?? t("auth.loginError"));
     } finally {
       setLoadingProvider(null);
     }
@@ -87,7 +80,7 @@ export default function LoginScreen() {
           Savely
         </Text>
         <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, lineHeight: 24, marginBottom: 8 }}>
-          {"Dijital d\u00fcnyan\u0131 y\u00f6netmeye ve her \u015feye tek noktadan eri\u015fmeye haz\u0131r m\u0131s\u0131n?"}
+  {t("auth.welcomeMessage")}
         </Text>
 
         <Pressable
@@ -108,37 +101,14 @@ export default function LoginScreen() {
             {loadingProvider === "google" ? <ActivityIndicator size="small" color={c.textPrimary} /> : <GoogleIcon />}
           </View>
           <Text style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, textAlign: "center" }}>
-            Google ile devam et
-          </Text>
-          <View style={{ width: 20 }} />
-        </Pressable>
-
-        <Pressable
-          onPress={() => handleOAuth("apple")}
-          disabled={!!loadingProvider}
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            backgroundColor: c.surface,
-            borderRadius: 16,
-            height: 56,
-            paddingHorizontal: 16,
-            gap: 12,
-            opacity: loadingProvider === "apple" ? 0.7 : 1,
-          }}
-        >
-          <View style={{ width: 20, height: 20 }}>
-            {loadingProvider === "apple" ? <ActivityIndicator size="small" color={c.textPrimary} /> : <AppleIcon color={c.text} />}
-          </View>
-          <Text style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, textAlign: "center" }}>
-            Apple ile devam et
+            {t("auth.continueWithGoogle")}
           </Text>
           <View style={{ width: 20 }} />
         </Pressable>
 
         <Pressable onPress={() => router.push("/(auth)/email-login" as any)} style={{ alignItems: "center", marginTop: 8 }}>
           <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textTertiary }}>
-            E-posta ile devam et
+            {t("auth.continueWithEmail")}
           </Text>
         </Pressable>
       </View>

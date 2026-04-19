@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useForm, Controller } from "react-hook-form";
+import { useTranslation } from "react-i18next";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 
 type FormData = {
@@ -20,6 +21,7 @@ type FormData = {
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const {
     control,
     handleSubmit,
@@ -50,25 +52,25 @@ export default function RegisterScreen() {
             </Pressable>
 
             <Text className="text-3xl font-sans-bold text-neutral-900 mb-2">
-              Hesap Oluştur
+              {t("auth.registerTitle")}
             </Text>
             <Text className="text-sm font-sans text-neutral-400 leading-5 mb-8">
-              Kütüphaneni oluşturmak için bir hesap aç.
+              {t("auth.registerSubtitle")}
             </Text>
 
             {/* Name */}
             <View className="mb-4">
               <Text className="text-sm font-sans-medium text-neutral-700 mb-1.5">
-                Ad Soyad
+                {t("auth.fullName")}
               </Text>
               <Controller
                 control={control}
                 name="name"
                 rules={{
-                  required: "Ad soyad gerekli",
+                  required: t("auth.fullNameRequired"),
                   minLength: {
                     value: 2,
-                    message: "En az 2 karakter olmalı",
+                    message: t("auth.fullNameMin"),
                   },
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
@@ -76,7 +78,7 @@ export default function RegisterScreen() {
                     className={`border rounded-2xl px-4 py-3.5 font-sans text-sm text-neutral-900 ${
                       errors.name ? "border-error" : "border-neutral-200"
                     }`}
-                    placeholder="Adın Soyadın"
+                    placeholder={t("auth.fullNamePlaceholder")}
                     placeholderTextColor="#A3A3A3"
                     autoCapitalize="words"
                     onChangeText={onChange}
@@ -95,16 +97,16 @@ export default function RegisterScreen() {
             {/* Email */}
             <View className="mb-4">
               <Text className="text-sm font-sans-medium text-neutral-700 mb-1.5">
-                E-Posta
+                {t("auth.email")}
               </Text>
               <Controller
                 control={control}
                 name="email"
                 rules={{
-                  required: "E-posta gerekli",
+                  required: t("auth.emailRequired"),
                   pattern: {
                     value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
-                    message: "Geçerli bir e-posta girin",
+                    message: t("auth.emailInvalid"),
                   },
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
@@ -112,7 +114,7 @@ export default function RegisterScreen() {
                     className={`border rounded-2xl px-4 py-3.5 font-sans text-sm text-neutral-900 ${
                       errors.email ? "border-error" : "border-neutral-200"
                     }`}
-                    placeholder="ornek@email.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     placeholderTextColor="#A3A3A3"
                     keyboardType="email-address"
                     autoCapitalize="none"
@@ -133,16 +135,16 @@ export default function RegisterScreen() {
             {/* Password */}
             <View className="mb-8">
               <Text className="text-sm font-sans-medium text-neutral-700 mb-1.5">
-                Şifre
+                {t("auth.password")}
               </Text>
               <Controller
                 control={control}
                 name="password"
                 rules={{
-                  required: "Şifre gerekli",
+                  required: t("auth.passwordRequired"),
                   minLength: {
                     value: 6,
-                    message: "Şifre en az 6 karakter olmalı",
+                    message: t("auth.passwordMin"),
                   },
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
@@ -172,7 +174,7 @@ export default function RegisterScreen() {
               className="bg-neutral-900 rounded-2xl py-4 items-center mb-4"
             >
               <Text className="text-white font-sans-semibold text-base">
-                Kayıt Ol
+                {t("auth.register")}
               </Text>
             </Pressable>
 
@@ -182,9 +184,9 @@ export default function RegisterScreen() {
               className="items-center"
             >
               <Text className="text-neutral-400 font-sans text-sm">
-                Zaten hesabın var mı?{" "}
+                {t("auth.alreadyHaveAccount")}{" "}
                 <Text className="text-neutral-900 font-sans-semibold">
-                  Giriş Yap
+                  {t("auth.login")}
                 </Text>
               </Text>
             </Pressable>
