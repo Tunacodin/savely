@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import { deactivatePushToken } from "@/hooks/use-notifications";
 
 interface Profile {
   id: string;
@@ -41,6 +42,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   signOut: async () => {
+    await deactivatePushToken();
     await supabase.auth.signOut();
     set({ session: null, user: null, profile: null });
   },
