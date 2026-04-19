@@ -4,23 +4,34 @@ import { getLocales } from "expo-localization";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import tr from "./tr";
 import en from "./en";
+import fr from "./fr";
+import es from "./es";
 
 const LANGUAGE_KEY = "savely-language";
 
-export type AppLanguage = "tr" | "en";
+export type AppLanguage = "tr" | "en" | "fr" | "es";
+
+export const LANGUAGES: { key: AppLanguage; label: string; flag: string }[] = [
+  { key: "tr", label: "Türkçe", flag: "🇹🇷" },
+  { key: "en", label: "English", flag: "🇬🇧" },
+  { key: "fr", label: "Français", flag: "🇫🇷" },
+  { key: "es", label: "Español", flag: "🇪🇸" },
+];
 
 const resources = {
   tr: { translation: tr },
   en: { translation: en },
+  fr: { translation: fr },
+  es: { translation: es },
 };
 
-// Get device language, fallback to Turkish
+const SUPPORTED: AppLanguage[] = ["tr", "en", "fr", "es"];
+
 function getDeviceLanguage(): AppLanguage {
   const locale = getLocales()[0]?.languageCode ?? "tr";
-  return locale === "en" ? "en" : "tr";
+  return SUPPORTED.includes(locale as AppLanguage) ? (locale as AppLanguage) : "tr";
 }
 
-// Initialize i18next
 async function initI18n() {
   const savedLang = await AsyncStorage.getItem(LANGUAGE_KEY);
   const language = (savedLang as AppLanguage) || getDeviceLanguage();
@@ -46,7 +57,6 @@ export async function getLanguage(): Promise<AppLanguage> {
   return (saved as AppLanguage) || getDeviceLanguage();
 }
 
-// Init on import
 initI18n();
 
 export default i18next;

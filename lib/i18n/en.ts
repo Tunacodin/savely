@@ -25,17 +25,23 @@ export default {
   // Home
   home: {
     title: "Home",
+    emptyTitle: "No content yet",
+    emptyDesc: "Share from any app or tap the + button",
   },
 
   // Search
   search: {
     placeholder: "Search...",
     noResults: "No results found",
+    emptyTitle: "Search something",
+    emptySubtitle: "Search through your saved content",
   },
 
   // Collections
   collections: {
     title: "Collections",
+    emptyTitle: "No collections",
+    emptyDesc: "Create collections to organize your content",
     itemCount: "{{count}} items",
     empty: "No content in this collection yet",
     fallbackTitle: "Collection",
@@ -53,6 +59,8 @@ export default {
     selectColor: "Select Color",
     create: "Create",
     giveName: "Name your collection..",
+    limitReached: "Collection Limit",
+    limitReachedDesc: "You can create up to 3 collections on the free plan. Upgrade to Premium for more.",
   },
 
   // Profile
@@ -68,6 +76,7 @@ export default {
     privacyPolicy: "Privacy Policy",
     termsOfService: "Terms of Service",
     logout: "Log Out",
+    changePhoto: "Change Photo",
   },
 
   // Account Settings
@@ -88,6 +97,7 @@ export default {
     deleteItem: "Delete Item",
     deleteConfirm: "Are you sure you want to delete this item?",
     addTitle: "Add title",
+    showMore: "show more",
   },
 
   // Save Item Form
@@ -120,6 +130,7 @@ export default {
     emailRequired: "Email is required",
     emailInvalid: "Enter a valid email",
     password: "Password",
+    passwordPlaceholder: "At least 6 characters",
     passwordRequired: "Password is required",
     passwordMin: "Password must be at least 6 characters",
     register: "Sign Up",
@@ -132,6 +143,30 @@ export default {
     emailAlreadyRegisteredMessage: "This email is already registered. Try logging in.",
     genericError: "An error occurred.",
     loginError: "Could not log in.",
+    verifyEmail: "Verify Your Email",
+    verifyEmailDesc: "We sent a 6-digit code to {{email}}.",
+    enterCode: "Enter code",
+    verify: "Verify",
+    resendCode: "Resend code",
+    resendIn: "Resend in {{seconds}}s",
+    invalidCode: "Invalid Code",
+    invalidCodeMessage: "The code you entered is incorrect. Please try again.",
+    codeSent: "Code Sent",
+    codeSentMessage: "A new verification code has been sent to your email.",
+    forgotPassword: "Forgot Password",
+    forgotPasswordDesc: "Enter your email and we'll send you a reset code.",
+    sendResetCode: "Send Reset Code",
+    resetPassword: "Reset Password",
+    resetPasswordDesc: "Enter the code sent to {{email}}.",
+    newPassword: "New Password",
+    newPasswordPlaceholder: "At least 6 characters",
+    confirmPassword: "Confirm Password",
+    confirmPasswordPlaceholder: "Re-enter password",
+    passwordsDoNotMatch: "Passwords do not match",
+    resetSuccess: "Password Updated",
+    resetSuccessMessage: "Your password has been updated. You can now log in.",
+    resetFailed: "Reset Failed",
+    resetFailedMessage: "The code is incorrect or expired. Please try again.",
   },
 
   // Onboarding
@@ -145,6 +180,10 @@ export default {
     page4Title: "You're in Control",
     page4Desc: "If you're ready to manage your digital world and access everything from one place, start building your library now.",
     letsStart: "Let's get started!",
+    collectionsTitle: "Choose Your Interests",
+    collectionsDesc: "We'll create personalized collections for you. Pick at least 3.",
+    collectionsSelected: "{{count}}/3 selected",
+    collectionsMin: "Select at least 3 collections",
   },
 
   // Premium
@@ -161,6 +200,41 @@ export default {
     proDesc: "Remove all limits from your library. Easily organize thousands of items.",
     alreadyPremium: "Already Premium",
     upgradeToPremium: "Upgrade to Premium",
+    moreEconomical: "More economical",
+    flexiblePricing: "Flexible pricing",
+    perYear: "year",
+    perMonth: "month",
+  },
+
+  // Notifications
+  notifications: {
+    title: "Notification Settings",
+    enabled: "Notifications",
+    frequency: "Notification Frequency",
+    frequencyLow: "Low (max 2 per week)",
+    frequencyNormal: "Normal (max 1 per day)",
+    frequencyHigh: "Frequent (max 2 per day)",
+    categoryNotifications: "Collection Notifications",
+    pauseNotifications: "Pause Notifications",
+    pause1Day: "1 day",
+    pause3Days: "3 days",
+    pause1Week: "1 week",
+    pauseActive: "Paused until {{date}}",
+    resume: "Resume",
+  },
+
+  // Emoji Picker
+  emojiPicker: {
+    search: "Search emoji...",
+    food: "Food",
+    movies: "Movies",
+    books: "Books",
+    shopping: "Shopping",
+    travel: "Travel",
+    sports: "Sports",
+    music: "Music",
+    health: "Health",
+    other: "Other",
   },
 
   // Splash

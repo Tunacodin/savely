@@ -25,17 +25,23 @@ export default {
   // Home
   home: {
     title: "Anasayfa",
+    emptyTitle: "Henüz içerik yok",
+    emptyDesc: "Bir uygulamadan paylaş veya + butonuna dokun",
   },
 
   // Search
   search: {
     placeholder: "Ara...",
     noResults: "Sonuç bulunamadı",
+    emptyTitle: "Bir şey ara",
+    emptySubtitle: "Kaydettiğin içeriklerde arama yap",
   },
 
   // Collections
   collections: {
     title: "Koleksiyonlar",
+    emptyTitle: "Koleksiyon yok",
+    emptyDesc: "İçeriklerini düzenlemek için koleksiyon oluştur",
     itemCount: "{{count}} içerik",
     empty: "Bu koleksiyonda henüz içerik yok",
     fallbackTitle: "Koleksiyon",
@@ -53,6 +59,8 @@ export default {
     selectColor: "Renk Seç",
     create: "Oluştur",
     giveName: "Koleksiyonuna isim ver..",
+    limitReached: "Koleksiyon Limiti",
+    limitReachedDesc: "Ücretsiz planda en fazla 3 koleksiyon oluşturabilirsin. Daha fazlası için Premium'a geç.",
   },
 
   // Profile
@@ -68,6 +76,7 @@ export default {
     privacyPolicy: "Gizlilik Politikası",
     termsOfService: "Kullanım Koşulları",
     logout: "Çıkış Yap",
+    changePhoto: "Fotoğraf Değiştir",
   },
 
   // Account Settings
@@ -88,6 +97,7 @@ export default {
     deleteItem: "İçeriği Sil",
     deleteConfirm: "Bu içeriği silmek istediğine emin misin?",
     addTitle: "Başlık ekle",
+    showMore: "daha fazla göster",
   },
 
   // Save Item Form
@@ -120,6 +130,7 @@ export default {
     emailRequired: "E-posta gerekli",
     emailInvalid: "Geçerli bir e-posta girin",
     password: "Şifre",
+    passwordPlaceholder: "En az 6 karakter",
     passwordRequired: "Şifre gerekli",
     passwordMin: "Şifre en az 6 karakter olmalı",
     register: "Kayıt Ol",
@@ -132,6 +143,33 @@ export default {
     emailAlreadyRegisteredMessage: "Bu e-posta adresi zaten kayıtlı. Giriş yapmayı deneyin.",
     genericError: "Bir hata oluştu.",
     loginError: "Giriş yapılamadı.",
+    // OTP
+    verifyEmail: "E-postanı Doğrula",
+    verifyEmailDesc: "{{email}} adresine 6 haneli bir kod gönderdik.",
+    enterCode: "Kodu gir",
+    verify: "Doğrula",
+    resendCode: "Kodu tekrar gönder",
+    resendIn: "{{seconds}} sn sonra tekrar gönder",
+    invalidCode: "Geçersiz Kod",
+    invalidCodeMessage: "Girdiğin kod hatalı. Lütfen tekrar dene.",
+    codeSent: "Kod gönderildi",
+    codeSentMessage: "Yeni doğrulama kodu e-postana gönderildi.",
+    // Forgot password
+    forgotPassword: "Şifremi Unuttum",
+    forgotPasswordDesc: "E-posta adresini gir, şifre sıfırlama kodu gönderelim.",
+    sendResetCode: "Sıfırlama Kodu Gönder",
+    // Reset password
+    resetPassword: "Şifre Sıfırla",
+    resetPasswordDesc: "{{email}} adresine gönderilen kodu gir.",
+    newPassword: "Yeni Şifre",
+    newPasswordPlaceholder: "En az 6 karakter",
+    confirmPassword: "Şifre Tekrar",
+    confirmPasswordPlaceholder: "Şifreyi tekrar gir",
+    passwordsDoNotMatch: "Şifreler eşleşmiyor",
+    resetSuccess: "Şifre Güncellendi",
+    resetSuccessMessage: "Şifren başarıyla güncellendi. Giriş yapabilirsin.",
+    resetFailed: "Sıfırlama Başarısız",
+    resetFailedMessage: "Kod hatalı veya süresi dolmuş. Lütfen tekrar dene.",
   },
 
   // Onboarding
@@ -145,6 +183,10 @@ export default {
     page4Title: "Kontrol Sende Olsun",
     page4Desc: "Dijital dünyanı yönetmeye ve her şeye tek noktadan erişmeye hazırsan, kütüphaneni oluşturmaya hemen başla.",
     letsStart: "Hadi başlayalım!",
+    collectionsTitle: "İlgi Alanlarını Seç",
+    collectionsDesc: "Sana özel koleksiyonlar oluşturalım. En az 3 tane seç.",
+    collectionsSelected: "{{count}}/3 seçildi",
+    collectionsMin: "En az 3 koleksiyon seç",
   },
 
   // Premium
@@ -161,6 +203,41 @@ export default {
     proDesc: "Kütüphanenizdeki tüm sınırları kaldırın. Binlerce içeriği kolayca gruplandırın.",
     alreadyPremium: "Zaten Premium'sun",
     upgradeToPremium: "Premiuma Geç",
+    moreEconomical: "Daha ekonomik",
+    flexiblePricing: "Esnek fiyatlandırma",
+    perYear: "yıl",
+    perMonth: "ay",
+  },
+
+  // Notifications
+  notifications: {
+    title: "Bildirim Ayarları",
+    enabled: "Bildirimler",
+    frequency: "Bildirim Sıklığı",
+    frequencyLow: "Az (haftada en fazla 2)",
+    frequencyNormal: "Normal (günde en fazla 1)",
+    frequencyHigh: "Sık (günde en fazla 2)",
+    categoryNotifications: "Koleksiyon Bildirimleri",
+    pauseNotifications: "Bildirimleri Duraklat",
+    pause1Day: "1 gün",
+    pause3Days: "3 gün",
+    pause1Week: "1 hafta",
+    pauseActive: "{{date}} tarihine kadar duraklatıldı",
+    resume: "Devam Ettir",
+  },
+
+  // Emoji Picker
+  emojiPicker: {
+    search: "Emoji ara...",
+    food: "Yemek",
+    movies: "Filmler",
+    books: "Kitaplar",
+    shopping: "Alışveriş",
+    travel: "Seyahat",
+    sports: "Spor",
+    music: "Müzik",
+    health: "Sağlık",
+    other: "Diğer",
   },
 
   // Splash
