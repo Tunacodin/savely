@@ -17,12 +17,17 @@ import { PlatformBadge } from "@/components/ui/platform-badge";
 import type { PlatformName } from "@/components/ui/platform-badge";
 import { PlatformLogo } from "@/components/onboarding/platform-logo";
 import { useThemeColors } from "@/hooks/use-theme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DEFAULT_COLLECTIONS, type DefaultCollection } from "@/constants/default-collections";
+
+const TOTAL_PAGES = 5;
 
 const PAGE_KEYS = [
   { title: "onboarding.page1Title", desc: "onboarding.page1Desc", button: "common.continue" },
   { title: "onboarding.page2Title", desc: "onboarding.page2Desc", button: "common.continue" },
   { title: "onboarding.page3Title", desc: "onboarding.page3Desc", button: "common.continue" },
-  { title: "onboarding.page4Title", desc: "onboarding.page4Desc", button: "onboarding.letsStart" },
+  { title: "onboarding.page4Title", desc: "onboarding.page4Desc", button: "common.continue" },
+  { title: "onboarding.collectionsTitle", desc: "onboarding.collectionsDesc", button: "onboarding.letsStart" },
 ];
 
 export default function Onboarding() {
@@ -30,9 +35,10 @@ export default function Onboarding() {
   const scrollRef = useRef<ScrollView>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [pagerHeight, setPagerHeight] = useState(0);
+  const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
   const router = useRouter();
   const c = useThemeColors();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const handleScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -42,12 +48,26 @@ export default function Onboarding() {
     [width]
   );
 
-  const goToNext = () => {
+  const isLastPage = activeIndex === TOTAL_PAGES - 1;
+  const canProceed = !isLastPage || selectedCollections.length >= 3;
+
+  const toggleCollection = (slug: string) => {
+    setSelectedCollections((prev) => {
+      if (prev.includes(slug)) return prev.filter((s) => s !== slug);
+      if (prev.length >= 3) return prev;
+      return [...prev, slug];
+    });
+  };
+
+  const goToNext = async () => {
     const next = activeIndex + 1;
-    if (next < PAGE_KEYS.length) {
+    if (next < TOTAL_PAGES) {
       scrollRef.current?.scrollTo({ x: next * width, animated: true });
       setActiveIndex(next);
     } else {
+      if (selectedCollections.length < 3) return;
+      // Save selections for after login
+      await AsyncStorage.setItem("pending_collections", JSON.stringify(selectedCollections));
       router.replace("/(auth)/login");
     }
   };
@@ -100,6 +120,7 @@ export default function Onboarding() {
           showsHorizontalScrollIndicator={false}
           onMomentumScrollEnd={handleScrollEnd}
           scrollEventThrottle={16}
+          scrollEnabled={activeIndex < TOTAL_PAGES - 1}
           style={{ flex: 1 }}
         >
           <View style={{ width, height: pagerHeight }}>
@@ -113,6 +134,14 @@ export default function Onboarding() {
           </View>
           <View style={{ width, height: pagerHeight }}>
             <CategoriesPage />
+          </View>
+          <View style={{ width, height: pagerHeight }}>
+            <CollectionPickerPage
+              selected={selectedCollections}
+              onToggle={toggleCollection}
+              lang={(i18n.language as keyof DefaultCollection["name"]) || "tr"}
+              c={c}
+            />
           </View>
         </ScrollView>
       </View>
@@ -157,11 +186,27 @@ export default function Onboarding() {
           ))}
         </View>
 
+        {/* Selected count badge */}
+        {isLastPage && (
+          <Text
+            style={{
+              fontFamily: "Rubik_500Medium",
+              fontSize: 14,
+              color: selectedCollections.length >= 3 ? c.textPrimary : c.textTertiary,
+              textAlign: "center",
+              marginBottom: 4,
+            }}
+          >
+            {t("onboarding.collectionsSelected", { count: selectedCollections.length })}
+          </Text>
+        )}
+
         {/* Button */}
         <Pressable
           onPress={goToNext}
+          disabled={!canProceed}
           style={{
-            backgroundColor: c.buttonPrimary,
+            backgroundColor: canProceed ? c.buttonPrimary : c.skeleton,
             borderRadius: 16,
             height: 64,
             alignItems: "center",
@@ -172,7 +217,7 @@ export default function Onboarding() {
             style={{
               fontFamily: "Rubik_400Regular",
               fontSize: 16,
-              color: c.buttonPrimaryText,
+              color: canProceed ? c.buttonPrimaryText : c.textTertiary,
             }}
           >
             {t(PAGE_KEYS[activeIndex].button)}
@@ -412,5 +457,64 @@ function CategoriesPage() {
         ))}
       </View>
     </View>
+  );
+}
+
+/* ─── Page 5: Collection Picker ─── */
+
+function CollectionPickerPage({
+  selected,
+  onToggle,
+  lang,
+  c,
+}: {
+  selected: string[];
+  onToggle: (slug: string) => void;
+  lang: keyof DefaultCollection["name"];
+  c: ReturnType<typeof useThemeColors>;
+}) {
+  return (
+    <ScrollView
+      style={{ flex: 1 }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+        {DEFAULT_COLLECTIONS.map((col) => {
+          const isSelected = selected.includes(col.slug);
+          const isDisabled = !isSelected && selected.length >= 3;
+          return (
+            <Pressable
+              key={col.slug}
+              onPress={() => onToggle(col.slug)}
+              disabled={isDisabled}
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderRadius: 14,
+                backgroundColor: isSelected ? c.buttonPrimary : c.surface,
+                borderWidth: 1.5,
+                borderColor: isSelected ? c.buttonPrimary : c.border,
+                gap: 8,
+                opacity: isDisabled ? 0.4 : 1,
+              }}
+            >
+              <Text style={{ fontSize: 18 }}>{col.emoji}</Text>
+              <Text
+                style={{
+                  fontFamily: "Rubik_500Medium",
+                  fontSize: 14,
+                  color: isSelected ? c.buttonPrimaryText : c.textPrimary,
+                }}
+              >
+                {col.name[lang] || col.name.en}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
