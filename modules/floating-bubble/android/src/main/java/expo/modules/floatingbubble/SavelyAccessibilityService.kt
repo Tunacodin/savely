@@ -41,9 +41,11 @@ class SavelyAccessibilityService : AccessibilityService() {
             notificationTimeout = 500
             flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
+        SavelyLog.d("A11y", "onServiceConnected — service is live")
     }
 
     override fun onDestroy() {
+        SavelyLog.d("A11y", "onDestroy — service disconnected")
         instance = null
         super.onDestroy()
     }
@@ -59,9 +61,15 @@ class SavelyAccessibilityService : AccessibilityService() {
      * No clipboard, no share sheet — pure accessibility tree inspection.
      */
     fun detectContentAtPoint(screenX: Int, screenY: Int): ContentMetadata? {
-        val root = try { rootInActiveWindow } catch (_: Throwable) { return null } ?: return null
+        val root = try { rootInActiveWindow } catch (t: Throwable) {
+            SavelyLog.e("A11y", "rootInActiveWindow threw", t); return null
+        }
+        if (root == null) { SavelyLog.w("A11y", "rootInActiveWindow is null"); return null }
+
         val pkg = root.packageName?.toString()
-        if (pkg == null) { root.recycle(); return null }
+        if (pkg == null) { root.recycle(); SavelyLog.w("A11y", "pkg is null"); return null }
+
+        SavelyLog.d("A11y", "detectContentAtPoint($screenX,$screenY) pkg=$pkg")
 
         return try {
             val screenWidth = resources.displayMetrics.widthPixels
@@ -70,11 +78,14 @@ class SavelyAccessibilityService : AccessibilityService() {
             val allTexts = mutableListOf<String>()
             val allUrls = mutableListOf<String>()
 
-            // Walk the tree and find the smallest "card" node containing the touch point
-            // Collect ALL text from that card's subtree
             findCardAndCollect(root, screenX, screenY, minCardWidth, allTexts, allUrls, depth = 0)
 
-            if (allTexts.isEmpty() && allUrls.isEmpty()) return null
+            SavelyLog.d("A11y", "collected texts=${allTexts.size} urls=${allUrls.size} | first=${allTexts.firstOrNull()?.take(60)}")
+
+            if (allTexts.isEmpty() && allUrls.isEmpty()) {
+                SavelyLog.w("A11y", "no content found at ($screenX,$screenY) in $pkg")
+                return null
+            }
             buildContentMetadata(allTexts, allUrls, pkg)
         } finally {
             root.recycle()

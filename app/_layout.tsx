@@ -29,6 +29,7 @@ import { DEFAULT_COLLECTIONS, SAVE_LATER_COLLECTION } from "@/constants/default-
 import { registerForPushNotifications, useNotificationSetup } from "@/hooks/use-notifications";
 import i18next from "@/lib/i18n";
 import { setNativeCredentials, clearNativeCredentials, drainPendingItems } from "../modules/sharing-shortcuts";
+import { PermissionSetupModal } from "@/components/permission-setup-modal";
 import { detectPlatform, inferContentType } from "@/utils/platform-detector";
 import { extractMetadata } from "@/services/metadata";
 import "react-native-reanimated";
@@ -152,10 +153,13 @@ async function ensureSaveLaterCollection(
   } catch {}
 }
 
+const PERMISSION_SETUP_KEY = "savely_permission_setup_done_v1";
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { setSession, fetchProfile, session, isLoading } = useAuthStore();
   const { loadUserData, clearUserData, addCollection } = useSavedItemsStore();
   const router = useRouter();
+  const [showPermissionSetup, setShowPermissionSetup] = useState(false);
 
   useNotificationSetup();
   const initializedRef = useRef(false);
@@ -194,6 +198,8 @@ function AuthGate({ children }: { children: React.ReactNode }) {
             await ensureSaveLaterCollection(userId, addCollection, loadUserData);
             await drainAndReplayPending();
             void enrichUnenrichedItems();
+            const done = await AsyncStorage.getItem(PERMISSION_SETUP_KEY).catch(() => null);
+            if (!done) setShowPermissionSetup(true);
           })();
         } else {
           loadUserData(userId);
@@ -230,7 +236,18 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   }, [session, isLoading]);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <PermissionSetupModal
+        visible={showPermissionSetup}
+        onDone={() => {
+          setShowPermissionSetup(false);
+          AsyncStorage.setItem(PERMISSION_SETUP_KEY, "1").catch(() => {});
+        }}
+      />
+    </>
+  );
 }
 
 export default function RootLayout() {

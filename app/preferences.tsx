@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { View, Text, Pressable, ScrollView, Switch, Platform } from "react-native";
+import { useCallback, useState } from "react";
+import { View, Text, Pressable, ScrollView, Switch, Platform, Clipboard, Alert, Modal } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -8,6 +8,7 @@ import { useThemeColors } from "@/hooks/use-theme";
 import { useThemeStore, type ThemeMode } from "@/store/theme";
 import { setLanguage, LANGUAGES, type AppLanguage } from "@/lib/i18n";
 import { useBubble } from "@/hooks/use-bubble";
+import { getBubbleLogs, clearBubbleLogs } from "@/modules/floating-bubble";
 
 const THEME_OPTIONS: { key: ThemeMode; labelKey: string; icon: string }[] = [
   { key: "light", labelKey: "preferences.themeLight", icon: "sun-line" },
@@ -22,9 +23,27 @@ export default function PreferencesScreen() {
   const themeMode = useThemeStore((s) => s.mode);
   const setThemeMode = useThemeStore((s) => s.setMode);
   const bubble = useBubble();
+  const [logs, setLogs] = useState<string | null>(null);
+  const [logsVisible, setLogsVisible] = useState(false);
 
   const handleSelectLanguage = useCallback(async (lang: AppLanguage) => {
     await setLanguage(lang);
+  }, []);
+
+  const handleShowLogs = useCallback(async () => {
+    const text = await getBubbleLogs();
+    setLogs(text || "(log yok)");
+    setLogsVisible(true);
+  }, []);
+
+  const handleCopyLogs = useCallback(() => {
+    if (logs) Clipboard.setString(logs);
+    Alert.alert("Kopyalandı", "Loglar panoya kopyalandı.");
+  }, [logs]);
+
+  const handleClearLogs = useCallback(async () => {
+    await clearBubbleLogs();
+    setLogs("(temizlendi)");
   }, []);
 
   return (
@@ -201,7 +220,51 @@ export default function PreferencesScreen() {
             </View>
           </View>
         )}
+
+        {/* Debug Logs (Android only) */}
+        {Platform.OS === "android" && (
+          <View style={{ marginHorizontal: 16, marginTop: 24, marginBottom: 8 }}>
+            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 13, color: c.textTertiary, marginBottom: 8 }}>
+              GELİŞTİRİCİ
+            </Text>
+            <View style={{ backgroundColor: c.card, borderRadius: 12, overflow: "hidden" }}>
+              <Pressable
+                onPress={handleShowLogs}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 20, height: 52, gap: 12 }}
+              >
+                <MingCuteIcon name="terminal-box-line" size={20} color={c.textSecondary} />
+                <Text style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textPrimary }}>
+                  Bubble loglarını görüntüle
+                </Text>
+                <MingCuteIcon name="right-line" size={18} color={c.textTertiary} />
+              </Pressable>
+            </View>
+          </View>
+        )}
       </ScrollView>
+
+      {/* Log Modal */}
+      <Modal visible={logsVisible} animationType="slide" onRequestClose={() => setLogsVisible(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: "#0f0f0f" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 }}>
+            <Pressable onPress={() => setLogsVisible(false)}>
+              <MingCuteIcon name="close-line" size={24} color="#fff" />
+            </Pressable>
+            <Text style={{ flex: 1, fontFamily: "Rubik_600SemiBold", fontSize: 16, color: "#fff" }}>Bubble Logları</Text>
+            <Pressable onPress={handleCopyLogs} style={{ marginRight: 8 }}>
+              <MingCuteIcon name="copy-line" size={22} color="#6b7280" />
+            </Pressable>
+            <Pressable onPress={handleClearLogs}>
+              <MingCuteIcon name="delete-2-line" size={22} color="#6b7280" />
+            </Pressable>
+          </View>
+          <ScrollView style={{ flex: 1, paddingHorizontal: 12 }} contentContainerStyle={{ paddingBottom: 40 }}>
+            <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 11, color: "#a3e635", lineHeight: 18 }}>
+              {logs ?? "Yükleniyor..."}
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }

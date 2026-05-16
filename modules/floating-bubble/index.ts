@@ -21,6 +21,8 @@ interface FloatingBubbleNativeModule {
   stopBubble(): Promise<void>;
   isBubbleRunning(): Promise<boolean>;
   updateCollections(collections: BubbleCollection[]): Promise<void>;
+  getLogs(): Promise<string>;
+  clearLogs(): Promise<void>;
 }
 
 const native = requireOptionalNativeModule<FloatingBubbleNativeModule>("FloatingBubble");
@@ -58,4 +60,14 @@ export async function isBubbleRunning(): Promise<boolean> {
 export async function updateBubbleCollections(collections: BubbleCollection[]): Promise<void> {
   if (Platform.OS !== "android" || !native) return;
   return native.updateCollections(collections);
+}
+
+export async function getBubbleLogs(): Promise<string> {
+  if (Platform.OS !== "android" || !native) return "";
+  return native.getLogs();
+}
+
+export async function clearBubbleLogs(): Promise<void> {
+  if (Platform.OS !== "android" || !native) return;
+  return native.clearLogs();
 }

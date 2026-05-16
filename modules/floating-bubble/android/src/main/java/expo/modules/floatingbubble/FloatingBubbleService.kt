@@ -46,6 +46,7 @@ class FloatingBubbleService : Service() {
         createNotificationChannel()
         startForeground(NOTIF_ID, buildNotification())
         collections = SharedStore.getCollections(this)
+        SavelyLog.d("Service", "onCreate — collections=${collections.size}, a11y=${SavelyAccessibilityService.instance != null}")
         addBubble()
     }
 
@@ -57,6 +58,7 @@ class FloatingBubbleService : Service() {
         bubbleView?.cleanup()
         removeBubble()
         removeDim()
+        SavelyLog.d("Service", "onDestroy")
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -106,6 +108,8 @@ class FloatingBubbleService : Service() {
     // ---- Drop handler ----
 
     private fun onBubbleDropped(screenX: Float, screenY: Float) {
+        val a11y = SavelyAccessibilityService.instance
+        SavelyLog.d("Drop", "dropped at ($screenX,$screenY) — a11yInstance=${a11y != null}")
         vibrate(40)
         bubbleView?.setAnalyzing(true)
         addDim()
@@ -113,18 +117,26 @@ class FloatingBubbleService : Service() {
         scope.launch {
             // Step 1: Detect card at drop coordinates (accessibility tree inspection)
             val detected = withContext(Dispatchers.IO) {
-                SavelyAccessibilityService.instance?.detectContentAtPoint(screenX.toInt(), screenY.toInt())
+                if (a11y == null) {
+                    SavelyLog.e("Drop", "SavelyAccessibilityService.instance is null — service not connected")
+                    null
+                } else {
+                    val result = a11y.detectContentAtPoint(screenX.toInt(), screenY.toInt())
+                    SavelyLog.d("Drop", "detectContentAtPoint → url=${result?.url} title=${result?.title} platform=${result?.platform}")
+                    result
+                }
             }
 
             if (detected == null) {
                 bubbleView?.setAnalyzing(false)
                 bubbleView?.showError()
                 removeDim()
-                Toast.makeText(
-                    this@FloatingBubbleService,
-                    "İçerik algılanamadı. Erişilebilirlik iznini kontrol et.",
-                    Toast.LENGTH_SHORT,
-                ).show()
+                val msg = if (a11y == null)
+                    "Erişilebilirlik servisi bağlı değil. Ayarlardan Savely servisini kapatıp tekrar açın."
+                else
+                    "İçerik algılanamadı. Desteklenen bir uygulama üzerinde dene (Instagram, YouTube, Twitter…)"
+                SavelyLog.w("Drop", "detection failed — a11yNull=${a11y == null}")
+                Toast.makeText(this@FloatingBubbleService, msg, Toast.LENGTH_LONG).show()
                 return@launch
             }
 
@@ -136,16 +148,20 @@ class FloatingBubbleService : Service() {
                 }
 
                 if (!isSyntheticUrl && detected.imageUrl == null) {
-                    // Try to enrich: fetch thumbnail/og:image via URL
+                    SavelyLog.d("Enrich", "fetching metadata for ${detected.url}")
                     try {
                         val fetched = MetadataFetcher.fetch(detected.url)
-                        // Merge: prefer a11y title (faster), use network image
+                        SavelyLog.d("Enrich", "done — image=${fetched.imageUrl != null} title=${fetched.title}")
                         fetched.copy(
                             title = detected.title ?: fetched.title,
                             description = detected.description ?: fetched.description,
                         )
-                    } catch (_: Throwable) { detected }
+                    } catch (t: Throwable) {
+                        SavelyLog.e("Enrich", "failed", t)
+                        detected
+                    }
                 } else {
+                    SavelyLog.d("Enrich", "skipping network fetch (synthetic=${isSyntheticUrl})")
                     detected
                 }
             }
@@ -153,6 +169,7 @@ class FloatingBubbleService : Service() {
             bubbleView?.setAnalyzing(false)
             removeDim()
 
+            SavelyLog.d("Drop", "collections=${collections.size} — ${if (collections.isEmpty()) "saving directly" else "showing picker"}")
             if (collections.isEmpty()) {
                 saveItem(meta, null)
             } else {
@@ -198,10 +215,12 @@ class FloatingBubbleService : Service() {
     }
 
     private fun trySaveDirect(meta: ContentMetadata, collectionId: String?): Boolean {
-        val token = SharedStore.accessToken(this) ?: return false
-        val userId = SharedStore.userId(this) ?: return false
-        val baseUrl = SharedStore.supabaseUrl(this) ?: return false
-        val anonKey = SharedStore.anonKey(this) ?: return false
+        val token = SharedStore.accessToken(this)
+        val userId = SharedStore.userId(this)
+        val baseUrl = SharedStore.supabaseUrl(this)
+        val anonKey = SharedStore.anonKey(this)
+        SavelyLog.d("Save", "token=${token != null} userId=${userId != null} baseUrl=${baseUrl != null} collectionId=$collectionId")
+        if (token == null || userId == null || baseUrl == null || anonKey == null) return false
         return try {
             val metaObj = JSONObject().apply {
                 meta.title?.let { put("ogTitle", it) }
@@ -233,8 +252,12 @@ class FloatingBubbleService : Service() {
             conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
             val code = conn.responseCode
             conn.disconnect()
+            SavelyLog.d("Save", "API response=$code")
             code in 200..299
-        } catch (_: Throwable) { false }
+        } catch (t: Throwable) {
+            SavelyLog.e("Save", "API request failed", t)
+            false
+        }
     }
 
     // ---- Helpers ----

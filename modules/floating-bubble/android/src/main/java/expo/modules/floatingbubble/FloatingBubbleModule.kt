@@ -68,6 +68,14 @@ class FloatingBubbleModule : Module() {
             })
             FloatingBubbleService.instance?.refreshCollections()
         }
+
+        AsyncFunction("getLogs") { ->
+            SavelyLog.getAll()
+        }
+
+        AsyncFunction("clearLogs") { ->
+            SavelyLog.clear()
+        }
     }
 
     private fun isA11yEnabled(ctx: android.content.Context): Boolean {
