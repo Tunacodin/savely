@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { View, Text, TextInput, Pressable, ScrollView, Alert, Modal } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useCallback, useEffect, useState } from "react";
+import { View, Text, TextInput, Pressable, ScrollView, Alert } from "react-native";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
@@ -10,9 +9,7 @@ import { useSavedItemsStore } from "@/store/saved-items";
 import { useShallow } from "zustand/react/shallow";
 import { useAuthStore } from "@/store/auth";
 import { useThemeColors, type ThemeColors } from "@/hooks/use-theme";
-import { useThemeStore } from "@/store/theme";
 import { supabase } from "@/lib/supabase";
-import { setLanguage, LANGUAGES, type AppLanguage } from "@/lib/i18n";
 
 function MenuItem({
   label,
@@ -32,7 +29,7 @@ function MenuItem({
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
         height: 64,
         borderRadius: 16,
         backgroundColor: dark ? c.buttonPrimary : c.surface,
@@ -124,15 +121,12 @@ function NameEditor({
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const c = useThemeColors();
-  const themeMode = useThemeStore((s) => s.mode);
-  const setThemeMode = useThemeStore((s) => s.setMode);
   const { items, collections } = useSavedItemsStore(
     useShallow((s) => ({ items: s.items, collections: s.collections }))
   );
-  const { profile, user, signOut, setProfile } = useAuthStore();
-  const [langModalVisible, setLangModalVisible] = useState(false);
+  const { profile, user, setProfile } = useAuthStore();
 
   const pickAvatar = useCallback(async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -170,79 +164,11 @@ export default function ProfileScreen() {
     }
   }, [user, profile, setProfile, t]);
 
-  const isDark = themeMode === "dark" || (themeMode === "system" && c.statusBar === "light");
-  const currentLang = LANGUAGES.find((l) => l.key === i18n.language) ?? LANGUAGES[0];
-
-  const toggleTheme = useCallback(() => {
-    setThemeMode(isDark ? "light" : "dark");
-  }, [isDark, setThemeMode]);
-
-  const handleSelectLanguage = useCallback(async (lang: AppLanguage) => {
-    await setLanguage(lang);
-    setLangModalVisible(false);
-  }, []);
-
-  const insets = useSafeAreaInsets();
-
   return (
       <View style={{ flex: 1, backgroundColor: c.background }}>
-        {/* Top Bar */}
-        <View
-          style={{
-            height: 56,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "flex-end",
-            paddingHorizontal: 16,
-            gap: 6,
-          }}
-        >
-          {/* Language */}
-          <Pressable
-            onPress={() => setLangModalVisible(true)}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              height: 36,
-              paddingHorizontal: 12,
-              borderRadius: 12,
-              backgroundColor: c.surface,
-              gap: 6,
-            }}
-          >
-            <Text style={{ fontSize: 14 }}>{currentLang.flag}</Text>
-            <Text
-              style={{
-                fontFamily: "Rubik_500Medium",
-                fontSize: 13,
-                color: c.textPrimary,
-              }}
-            >
-              {currentLang.key.toUpperCase()}
-            </Text>
-          </Pressable>
-
-          {/* Theme Toggle */}
-          <Pressable
-            onPress={toggleTheme}
-            style={{
-              width: 36,
-              height: 36,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <MingCuteIcon
-              name={isDark ? "sun-line" : "moon-line"}
-              size={22}
-              color={c.textPrimary}
-            />
-          </Pressable>
-        </View>
-
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           {/* Profile Card */}
-          <View style={{ alignItems: "center", paddingTop: 16, gap: 16 }}>
+          <View style={{ alignItems: "center", paddingTop: 32, gap: 24 }}>
             <Pressable onPress={pickAvatar} style={{ position: "relative" }}>
               <View
                 style={{
@@ -253,6 +179,8 @@ export default function ProfileScreen() {
                   backgroundColor: c.surfaceAlt,
                   alignItems: "center",
                   justifyContent: "center",
+                  borderWidth: 2,
+                  borderColor: c.textPrimary,
                 }}
               >
                 {profile?.avatar_url ? (
@@ -284,7 +212,7 @@ export default function ProfileScreen() {
                 <MingCuteIcon name="camera-line" size={14} color={c.textPrimary} />
               </View>
             </Pressable>
-            <View style={{ alignItems: "center" }}>
+            <View style={{ alignItems: "center", gap: 20 }}>
               <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 20, color: c.textPrimary }}>
                 {profile?.display_name ?? user?.email?.split("@")[0] ?? t("profile.user")}
               </Text>
@@ -293,7 +221,7 @@ export default function ProfileScreen() {
                   fontFamily: "Rubik_500Medium",
                   fontSize: 14,
                   color: c.textTertiary,
-                  marginTop: 4,
+                  textAlign: "center",
                 }}
               >
                 {profile?.email ?? user?.email ?? ""}
@@ -306,7 +234,7 @@ export default function ProfileScreen() {
             style={{
               flexDirection: "row",
               paddingHorizontal: 16,
-              gap: 16,
+              gap: 20,
               marginTop: 24,
             }}
           >
@@ -314,9 +242,9 @@ export default function ProfileScreen() {
               style={{
                 flex: 1,
                 backgroundColor: c.surface,
-                borderRadius: 16,
-                paddingVertical: 16,
-                paddingHorizontal: 20,
+                borderRadius: 24,
+                padding: 24,
+                gap: 20,
               }}
             >
               <Text
@@ -324,6 +252,7 @@ export default function ProfileScreen() {
                   fontFamily: "Rubik_500Medium",
                   fontSize: 12,
                   color: c.textTertiary,
+                  textAlign: "center",
                 }}
               >
                 {t("profile.savedContent")}
@@ -333,7 +262,7 @@ export default function ProfileScreen() {
                   fontFamily: "Rubik_500Medium",
                   fontSize: 32,
                   color: c.textPrimary,
-                  marginTop: 4,
+                  textAlign: "center",
                 }}
               >
                 {items.length}
@@ -343,9 +272,9 @@ export default function ProfileScreen() {
               style={{
                 flex: 1,
                 backgroundColor: c.surface,
-                borderRadius: 16,
-                paddingVertical: 16,
-                paddingHorizontal: 20,
+                borderRadius: 24,
+                padding: 24,
+                gap: 20,
               }}
             >
               <Text
@@ -353,6 +282,7 @@ export default function ProfileScreen() {
                   fontFamily: "Rubik_500Medium",
                   fontSize: 12,
                   color: c.textTertiary,
+                  textAlign: "center",
                 }}
               >
                 {t("profile.collection")}
@@ -362,7 +292,7 @@ export default function ProfileScreen() {
                   fontFamily: "Rubik_500Medium",
                   fontSize: 32,
                   color: c.textPrimary,
-                  marginTop: 4,
+                  textAlign: "center",
                 }}
               >
                 {collections.length}
@@ -371,7 +301,7 @@ export default function ProfileScreen() {
           </View>
 
           {/* Menu Items */}
-          <View style={{ paddingHorizontal: 16, marginTop: 24, gap: 12 }}>
+          <View style={{ paddingHorizontal: 16, marginTop: 24, gap: 16 }}>
             <MenuItem
               label={t("profile.goPremium")}
               dark
@@ -384,6 +314,11 @@ export default function ProfileScreen() {
               onPress={() => router.push("/account-settings")}
             />
             <MenuItem
+              label={t("profile.preferences")}
+              c={c}
+              onPress={() => router.push("/preferences")}
+            />
+            <MenuItem
               label={t("notifications.title")}
               c={c}
               onPress={() => router.push("/notification-settings")}
@@ -392,93 +327,8 @@ export default function ProfileScreen() {
             <MenuItem label={t("profile.termsOfService")} c={c} />
           </View>
 
-          {/* Logout */}
-          <View style={{ paddingHorizontal: 16, marginTop: 32, marginBottom: 40 }}>
-            <Pressable
-              onPress={() => signOut()}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                height: 56,
-                borderRadius: 16,
-                backgroundColor: c.errorBg,
-                gap: 8,
-              }}
-            >
-              <MingCuteIcon name="exit-line" size={20} color={c.error} />
-              <Text
-                style={{
-                  fontFamily: "Rubik_500Medium",
-                  fontSize: 16,
-                  color: c.error,
-                }}
-              >
-                {t("profile.logout")}
-              </Text>
-            </Pressable>
-          </View>
+          <View style={{ height: 40 }} />
         </ScrollView>
-
-        {/* Language Modal */}
-        <Modal
-          visible={langModalVisible}
-          transparent
-          animationType="slide"
-          onRequestClose={() => setLangModalVisible(false)}
-        >
-          <Pressable style={{ flex: 1 }} onPress={() => setLangModalVisible(false)} />
-          <View style={{ backgroundColor: c.sheetBg, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: insets.bottom + 16 }}>
-            {/* Handle */}
-            <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
-              <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.handleIndicator }} />
-            </View>
-            <Text
-              style={{
-                fontFamily: "Rubik_600SemiBold",
-                fontSize: 18,
-                color: c.textPrimary,
-                paddingHorizontal: 20,
-                paddingTop: 8,
-                paddingBottom: 16,
-              }}
-            >
-              {t("profile.language")}
-            </Text>
-            {LANGUAGES.map((lang) => {
-              const isSelected = i18n.language === lang.key;
-              return (
-                <Pressable
-                  key={lang.key}
-                  onPress={() => handleSelectLanguage(lang.key)}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingHorizontal: 20,
-                    height: 56,
-                    gap: 14,
-                    backgroundColor: isSelected ? c.surface : "transparent",
-                  }}
-                >
-                  <Text style={{ fontSize: 22 }}>{lang.flag}</Text>
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontFamily: isSelected ? "Rubik_500Medium" : "Rubik_400Regular",
-                      fontSize: 16,
-                      color: c.textPrimary,
-                    }}
-                  >
-                    {lang.label}
-                  </Text>
-                  {isSelected && (
-                    <MingCuteIcon name="check-line" size={20} color={c.textPrimary} />
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
-        </Modal>
       </View>
   );
 }

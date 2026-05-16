@@ -31,7 +31,7 @@ export function SaveItemCard({ item, width, onPress }: Props) {
         style={{
           width,
           height: imageHeight,
-          borderRadius: 12,
+          borderRadius: 20,
           overflow: "hidden",
           backgroundColor: c.surfaceAlt,
         }}
@@ -40,7 +40,7 @@ export function SaveItemCard({ item, width, onPress }: Props) {
           <Image
             source={imageSource}
             style={StyleSheet.absoluteFill}
-            contentFit="contain"
+            contentFit="cover"
           />
         )}
         {/* Platform Badge - bottom left */}
@@ -50,10 +50,10 @@ export function SaveItemCard({ item, width, onPress }: Props) {
       </View>
 
       {/* Title */}
-      <View style={{ marginTop: 8, paddingHorizontal: 2 }}>
+      <View style={{ marginTop: 8, paddingHorizontal: 6 }}>
         <Text
           style={{
-            fontFamily: "Rubik_500Medium",
+            fontFamily: "Inter_500Medium",
             fontSize: 12,
             color: c.textPrimary,
             lineHeight: 16,

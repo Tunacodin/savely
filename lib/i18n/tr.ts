@@ -61,6 +61,13 @@ export default {
     giveName: "Koleksiyonuna isim ver..",
     limitReached: "Koleksiyon Limiti",
     limitReachedDesc: "Ücretsiz planda en fazla 3 koleksiyon oluşturabilirsin. Daha fazlası için Premium'a geç.",
+    sortTitle: "Sıralama",
+    sortNewest: "En Yeni",
+    sortOldest: "En Eski",
+    sortMostItems: "En Çok İçerik",
+    sortFewestItems: "En Az İçerik",
+    sortAlphaAsc: "A → Z",
+    sortAlphaDesc: "Z → A",
   },
 
   // Profile
@@ -73,6 +80,7 @@ export default {
     language: "Dil",
     goPremium: "Premium'a Geç",
     accountSettings: "Hesap Ayarları",
+    preferences: "Tercihler",
     privacyPolicy: "Gizlilik Politikası",
     termsOfService: "Kullanım Koşulları",
     logout: "Çıkış Yap",
@@ -87,6 +95,9 @@ export default {
     password: "Şifre",
     logoutConfirm: "Hesabından çıkmak istediğine emin misin?",
     deleteAccount: "Hesabı Sil",
+    deleteAccountConfirmTitle: "Hesabı sil",
+    deleteAccountConfirmMessage: "Hesabın ve tüm verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz.",
+    deleteAccountError: "Hesap silinemedi. Lütfen tekrar dene.",
   },
 
   // Item Detail (Bottom Sheet)
@@ -98,6 +109,7 @@ export default {
     deleteConfirm: "Bu içeriği silmek istediğine emin misin?",
     addTitle: "Başlık ekle",
     showMore: "daha fazla göster",
+    showLess: "daha az göster",
   },
 
   // Save Item Form
@@ -108,6 +120,19 @@ export default {
     itemTitle: "Başlık",
     titlePlaceholder: "Bir başlık ekle (isteğe bağlı)",
     collection: "Koleksiyon",
+    urlPlaceholder: "URL yapıştır veya gir...",
+    listLater: "Daha Sonra Listele",
+  },
+
+  // Preferences
+  preferences: {
+    title: "Tercihler",
+    appearance: "Görünüm",
+    theme: "Tema",
+    themeLight: "Açık",
+    themeDark: "Koyu",
+    themeSystem: "Sistem",
+    language: "Dil",
   },
 
   // Auth
@@ -121,6 +146,7 @@ export default {
     continueWithGoogle: "Google ile devam et",
     continueWithApple: "Apple ile devam et",
     continueWithEmail: "E-posta ile devam et",
+    orContinueWithEmail: "veya e-posta ile",
     fullName: "Ad Soyad",
     fullNamePlaceholder: "Adın Soyadın",
     fullNameRequired: "Ad soyad gerekli",
@@ -207,6 +233,7 @@ export default {
     flexiblePricing: "Esnek fiyatlandırma",
     perYear: "yıl",
     perMonth: "ay",
+    perMonthShort: "/ay",
   },
 
   // Notifications
@@ -229,19 +256,11 @@ export default {
   // Emoji Picker
   emojiPicker: {
     search: "Emoji ara...",
-    food: "Yemek",
-    movies: "Filmler",
-    books: "Kitaplar",
-    shopping: "Alışveriş",
-    travel: "Seyahat",
-    sports: "Spor",
-    music: "Müzik",
-    health: "Sağlık",
-    other: "Diğer",
+    noResults: "Emoji bulunamadı",
   },
 
   // Splash
   splash: {
-    motto: "Save it. Find it. Keep it.",
+    motto: "Kaydet. Bul. Sakla.",
   },
 } as const;

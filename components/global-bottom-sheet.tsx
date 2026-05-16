@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { useThemeColors } from "@/hooks/use-theme";
+import { useKeyboardInset } from "@/hooks/use-keyboard-inset";
 import type { SavedItem } from "@/types";
 import { useSavedItemsStore } from "@/store/saved-items";
 
@@ -32,10 +33,11 @@ export function GlobalBottomSheetProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const { width } = useWindowDimensions();
+  const { width, height: windowHeight } = useWindowDimensions();
   const { t, i18n } = useTranslation();
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
+  const keyboardInset = useKeyboardInset();
   const updateItem = useSavedItemsStore((s) => s.updateItem);
   const removeItem = useSavedItemsStore((s) => s.removeItem);
   const itemDetailSheetRef = useRef<BottomSheetModal>(null);
@@ -185,15 +187,26 @@ export function GlobalBottomSheetProvider({
       {/* Item detail sheet */}
       <BottomSheetModal
         ref={itemDetailSheetRef}
-        snapPoints={[imageAspectRatio > 1 ? "70%" : "60%", "92%"]}
-        enableDynamicSizing={false}
+        enableDynamicSizing
+        maxDynamicContentSize={windowHeight * 0.96}
         enablePanDownToClose
         backdropComponent={renderBackdrop}
         handleIndicatorStyle={{ backgroundColor: c.handleIndicator, width: 40 }}
         backgroundStyle={{ borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: c.sheetBg }}
         footerComponent={renderFooter}
+        keyboardBehavior="extend"
+        keyboardBlurBehavior="restore"
+        android_keyboardInputMode="adjustResize"
       >
-        <BottomSheetScrollView style={{ flex: 1 }}>
+        <BottomSheetScrollView
+          key={selectedItem?.id ?? "none"}
+          enableFooterMarginAdjustment
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            paddingBottom: keyboardInset,
+          }}
+        >
             {/* Image */}
             {imageSource && (
               <View
@@ -220,7 +233,7 @@ export function GlobalBottomSheetProvider({
             )}
 
             {/* Content */}
-            <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 16, paddingBottom: 110 }}>
+            <View style={{ paddingHorizontal: 20, paddingTop: 20, gap: 16 }}>
               {/* Title - Edit Mode */}
               {isEditingTitle ? (
                 <View style={{ gap: 10 }}>
@@ -312,10 +325,10 @@ export function GlobalBottomSheetProvider({
                       <MingCuteIcon name="edit-2-line" size={20} color={c.textSecondary} />
                     </Pressable>
                   </View>
-                  {titleClamped && !expandedTitle && (
-                    <Pressable onPress={() => setExpandedTitle(true)}>
+                  {titleClamped && (
+                    <Pressable onPress={() => setExpandedTitle((v) => !v)}>
                       <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textTertiary }}>
-                        {t("itemDetail.showMore")}
+                        {expandedTitle ? t("itemDetail.showLess") : t("itemDetail.showMore")}
                       </Text>
                     </Pressable>
                   )}

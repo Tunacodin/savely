@@ -1,0 +1,7 @@
+{
+  "name": "sharing-shortcuts",
+  "version": "0.1.0",
+  "description": "Local Expo module: Android sharing shortcuts (Direct Share) for collections",
+  "main": "index.ts",
+  "private": true
+}

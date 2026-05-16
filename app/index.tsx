@@ -3,5 +3,5 @@ import { useAuthStore } from "@/store/auth";
 
 export default function Index() {
   const session = useAuthStore((s) => s.session);
-  return <Redirect href={session ? "/(tabs)" : "/(auth)/login"} />;
+  return <Redirect href={session ? "/(tabs)" : "/(auth)/email-login"} />;
 }

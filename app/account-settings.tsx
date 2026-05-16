@@ -10,7 +10,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function AccountSettingsScreen() {
   const router = useRouter();
-  const { signOut, profile, user, setProfile } = useAuthStore();
+  const { profile, user, setProfile, signOut } = useAuthStore();
   const c = useThemeColors();
   const { t } = useTranslation();
 
@@ -27,6 +27,28 @@ export default function AccountSettingsScreen() {
     if (profile) setProfile({ ...profile, display_name: trimmed });
   }, [nameValue, user, profile, setProfile]);
 
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      t("accountSettings.deleteAccountConfirmTitle"),
+      t("accountSettings.deleteAccountConfirmMessage"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("accountSettings.deleteAccount"),
+          style: "destructive",
+          onPress: async () => {
+            const { error } = await supabase.rpc("delete_account");
+            if (error) {
+              Alert.alert(t("common.error"), t("accountSettings.deleteAccountError"));
+              return;
+            }
+            await signOut();
+          },
+        },
+      ],
+    );
+  }, [t, signOut]);
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }} edges={["top"]}>
       {/* Top Bar */}
@@ -37,13 +59,15 @@ export default function AccountSettingsScreen() {
           alignItems: "center",
           paddingHorizontal: 16,
           gap: 12,
+          borderBottomWidth: 1.5,
+          borderBottomColor: c.border,
         }}
       >
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <MingCuteIcon name="left-line" size={24} color={c.textPrimary} />
         </Pressable>
         <Text
-          style={{ fontFamily: "Rubik_500Medium", fontSize: 20, color: c.textPrimary }}
+          style={{ fontFamily: "Rubik_500Medium", fontSize: 20, lineHeight: 28, color: c.textPrimary }}
         >
           {t("accountSettings.title")}
         </Text>
@@ -104,52 +128,11 @@ export default function AccountSettingsScreen() {
           </Text>
         </View>
 
-        {/* Password - Read only */}
-        <View
-          style={{
-            backgroundColor: c.surface,
-            borderRadius: 16,
-            paddingHorizontal: 20,
-            paddingVertical: 16,
-            height: 80,
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textSecondary, marginBottom: 4 }}>
-            {t("accountSettings.password")}
-          </Text>
-          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary }}>
-            {"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"}
-          </Text>
-        </View>
-      </View>
-
-      {/* Logout Button */}
-      <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-        <Pressable
-          onPress={() => {
-            Alert.alert(t("profile.logout"), t("accountSettings.logoutConfirm"), [
-              { text: t("common.cancel"), style: "cancel" },
-              { text: t("profile.logout"), style: "destructive", onPress: () => { signOut(); router.replace("/(auth)/login"); } },
-            ]);
-          }}
-          style={{
-            backgroundColor: c.errorBg,
-            borderRadius: 16,
-            height: 64,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.error }}>
-            {t("profile.logout")}
-          </Text>
-        </Pressable>
       </View>
 
       {/* Delete Account */}
       <View style={{ alignItems: "center", marginTop: 20 }}>
-        <Pressable>
+        <Pressable onPress={handleDeleteAccount} hitSlop={8}>
           <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textTertiary }}>
             {t("accountSettings.deleteAccount")}
           </Text>

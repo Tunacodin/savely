@@ -1,7 +1,41 @@
 import { create } from "zustand";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { SavedItem, Collection, SavedItemMetadata, UserSubscription, PremiumPlan } from "@/types";
 import type { PlatformName } from "@/components/ui/platform-badge";
 import { supabase } from "@/lib/supabase";
+import { pushCollectionShortcuts, removeAllShortcuts } from "../modules/sharing-shortcuts";
+import { updateBubbleCollections } from "../modules/floating-bubble";
+
+const RECENT_COLLECTIONS_KEY = "recent_collections_v1";
+const RECENT_COLLECTIONS_LIMIT = 4;
+
+async function loadRecentCollectionIds(): Promise<string[]> {
+  try {
+    const raw = await AsyncStorage.getItem(RECENT_COLLECTIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function persistRecentCollectionIds(ids: string[]): Promise<void> {
+  try {
+    await AsyncStorage.setItem(RECENT_COLLECTIONS_KEY, JSON.stringify(ids));
+  } catch {}
+}
+
+function syncShortcuts(recentIds: string[], collections: Collection[]): void {
+  const recentSet = new Set(recentIds);
+  const recentOrdered = recentIds
+    .map((id) => collections.find((c) => c.id === id))
+    .filter((c): c is Collection => !!c);
+  const fillers = collections.filter((c) => !recentSet.has(c.id));
+  const merged = [...recentOrdered, ...fillers]
+    .slice(0, RECENT_COLLECTIONS_LIMIT)
+    .map((c) => ({ id: c.id, name: c.name, emoji: c.emoji, bgColor: c.bgColor }));
+  void pushCollectionShortcuts(merged).catch(() => {});
+  void updateBubbleCollections(merged).catch(() => {});
+}
 
 const freePlan: PremiumPlan = {
   id: "free",
@@ -42,12 +76,14 @@ interface SavedItemsState {
   items: SavedItem[];
   collections: Collection[];
   recentSearches: string[];
+  recentCollectionIds: string[];
   subscription: UserSubscription;
   availablePlans: PremiumPlan[];
   isLoading: boolean;
 
   loadUserData: (userId: string) => Promise<void>;
   clearUserData: () => void;
+  touchCollection: (collectionId: string) => Promise<void>;
 
   addRecentSearch: (query: string) => Promise<void>;
   removeRecentSearch: (query: string) => Promise<void>;
@@ -72,6 +108,7 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
   items: [],
   collections: [],
   recentSearches: [],
+  recentCollectionIds: [],
   subscription: { tier: "free", currentPlan: freePlan },
   availablePlans: [freePlan, proPlanMonthly, proPlanYearly],
   isLoading: false,
@@ -125,10 +162,25 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
 
     const recentSearches = (searchesData ?? []).map((s) => s.query as string);
 
-    set({ collections, items, recentSearches, isLoading: false });
+    const recentCollectionIds = await loadRecentCollectionIds();
+    set({ collections, items, recentSearches, recentCollectionIds, isLoading: false });
+    syncShortcuts(recentCollectionIds, collections);
   },
 
-  clearUserData: () => set({ items: [], collections: [], recentSearches: [] }),
+  clearUserData: () => {
+    void removeAllShortcuts().catch(() => {});
+    set({ items: [], collections: [], recentSearches: [], recentCollectionIds: [] });
+  },
+
+  touchCollection: async (collectionId) => {
+    const state = get();
+    if (!state.collections.some((c) => c.id === collectionId)) return;
+    const next = [collectionId, ...state.recentCollectionIds.filter((id) => id !== collectionId)]
+      .slice(0, RECENT_COLLECTIONS_LIMIT);
+    set({ recentCollectionIds: next });
+    await persistRecentCollectionIds(next);
+    syncShortcuts(next, state.collections);
+  },
 
   addRecentSearch: async (query) => {
     const trimmed = query.trim();
@@ -210,6 +262,9 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
         c.id === item.collectionId ? { ...c, itemCount: c.itemCount + 1 } : c
       ),
     }));
+    if (item.collectionId) {
+      void get().touchCollection(item.collectionId);
+    }
     return data.id;
   },
 
@@ -274,9 +329,7 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
   },
 
   canAddCollection: () => {
-    const { collections, subscription } = get();
-    if (subscription.tier === "pro") return true;
-    return collections.length < 3;
+    return true;
   },
 
   addCollection: async (collection) => {
@@ -307,6 +360,7 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
     };
 
     set((state) => ({ collections: [...state.collections, newCollection] }));
+    syncShortcuts(get().recentCollectionIds, get().collections);
     return data.id;
   },
 
@@ -323,16 +377,21 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
     if (updates.bgColor !== undefined) dbUpdates.bg_color = updates.bgColor;
 
     await supabase.from("collections").update(dbUpdates).eq("id", id);
+    syncShortcuts(get().recentCollectionIds, get().collections);
   },
 
   removeCollection: async (id) => {
     await supabase.from("collections").delete().eq("id", id);
+    const nextRecent = get().recentCollectionIds.filter((rid) => rid !== id);
     set((state) => ({
       collections: state.collections.filter((c) => c.id !== id),
       items: state.items.map((i) =>
         i.collectionId === id ? { ...i, collectionId: undefined } : i
       ),
+      recentCollectionIds: nextRecent,
     }));
+    await persistRecentCollectionIds(nextRecent);
+    syncShortcuts(nextRecent, get().collections);
   },
 
   moveItemToCollection: async (itemId, collectionId) => {
@@ -353,6 +412,9 @@ export const useSavedItemsStore = create<SavedItemsState>((set, get) => ({
         return { ...c, itemCount: count };
       }),
     }));
+    if (collectionId) {
+      void get().touchCollection(collectionId);
+    }
   },
 
   upgradeToPremium: (plan) =>

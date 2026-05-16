@@ -64,7 +64,8 @@ const PLATFORM_PATTERNS: {
   },
   {
     platform: "pinterest",
-    patterns: [/pinterest\./i],
+    // Uygulama çoğunlukla pin.it kısa linki paylaşır; tam alan adı pinterest.* olmayabilir
+    patterns: [/pinterest\./i, /\/\/pin\.it\b/i],
     idExtractor: (url) => {
       const match = url.match(/pin\/(\d+)/);
       return match?.[1] ?? null;
@@ -129,9 +130,14 @@ export function inferContentType(platform: PlatformName, url: string): ContentTy
   return CONTENT_TYPE_MAP[platform] ?? "link";
 }
 
-const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/i;
+const URL_REGEX = /https?:\/\/[^\s<>"{}|\\^`[\]]+/gi;
 
 export function extractUrlFromText(text: string): string | null {
-  const match = text.match(URL_REGEX);
-  return match?.[0] ?? null;
+  const matches = text.match(URL_REGEX);
+  if (!matches?.length) return null;
+  // Metinde birden fazla link varsa (ör. özet metin + pin), bilinen platformu seç
+  for (const candidate of matches) {
+    if (detectPlatform(candidate).platform !== "link") return candidate;
+  }
+  return matches[0];
 }

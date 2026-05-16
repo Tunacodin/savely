@@ -52,13 +52,15 @@ export default function PremiumPlanScreen() {
           alignItems: "center",
           paddingHorizontal: 16,
           gap: 12,
+          borderBottomWidth: 1.5,
+          borderBottomColor: c.border,
         }}
       >
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <MingCuteIcon name="left-line" size={24} color={c.textPrimary} />
         </Pressable>
         <Text
-          style={{ fontFamily: "Rubik_500Medium", fontSize: 20, color: c.textPrimary }}
+          style={{ fontFamily: "Rubik_500Medium", fontSize: 20, lineHeight: 28, color: c.textPrimary }}
         >
           {t("premium.choosePlan")}
         </Text>

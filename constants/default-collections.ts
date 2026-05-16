@@ -11,6 +11,19 @@ export interface DefaultCollection {
   };
 }
 
+export const SAVE_LATER_COLLECTION: DefaultCollection = {
+  slug: "saveLater",
+  emoji: "🔖",
+  bgColor: "#FFFFFF",
+  keywords: ["daha sonra", "later", "save", "watch", "kaydet", "izle", "plus tard", "más tarde"],
+  name: {
+    tr: "Daha Sonra Listele",
+    en: "Save for Later",
+    fr: "Pour plus tard",
+    es: "Para después",
+  },
+};
+
 export const DEFAULT_COLLECTIONS: DefaultCollection[] = [
   { slug: "recipes", emoji: "🍳", bgColor: "#FFF7ED", keywords: ["tarif", "yemek", "recipe", "cooking", "mutfak", "recette", "cuisine", "receta", "cocina"], name: { tr: "Tarifler", en: "Recipes", fr: "Recettes", es: "Recetas" } },
   { slug: "movies", emoji: "🎬", bgColor: "#EEF2FF", keywords: ["film", "dizi", "movie", "series", "netflix", "izle", "série", "película"], name: { tr: "Film & Dizi", en: "Movies & Series", fr: "Films & Séries", es: "Películas & Series" } },

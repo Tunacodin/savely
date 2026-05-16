@@ -1,152 +1,103 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   View,
   Text,
-  TextInput,
   Pressable,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Alert,
+  BackHandler,
 } from "react-native";
+import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { MingCuteIcon } from "@/components/ui/mingcute-icon";
+import * as WebBrowser from "expo-web-browser";
+import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme";
 
+WebBrowser.maybeCompleteAuthSession();
+
+function GoogleIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24">
+      <Path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+      <Path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+      <Path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+      <Path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+    </Svg>
+  );
+}
+
 export default function EmailLoginScreen() {
-  const router = useRouter();
   const c = useThemeColors();
   const { t } = useTranslation();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLogin, setIsLogin] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
 
-  const handleSubmit = async () => {
-    if (!email || !password) return;
-    setLoading(true);
+  const handleGoogle = async () => {
+    setLoadingGoogle(true);
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          if (error.message.toLowerCase().includes("invalid login credentials") || error.message.toLowerCase().includes("invalid")) {
-            Alert.alert(t("auth.loginFailed"), t("auth.loginFailedMessage"));
-          } else {
-            Alert.alert(t("common.error"), error.message);
-          }
+      const redirectTo = "savely://auth/callback";
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      if (!data.url) throw new Error("No auth URL");
+      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+      if (result.type === "success" && result.url) {
+        const url = new URL(result.url);
+        const code = url.searchParams.get("code");
+        if (code) {
+          await supabase.auth.exchangeCodeForSession(code);
+          return;
         }
-      } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
-        if (error) {
-          if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists")) {
-            Alert.alert(t("auth.emailAlreadyRegistered"), t("auth.emailAlreadyRegisteredMessage"));
-          } else {
-            Alert.alert(t("common.error"), error.message);
-          }
-        } else if (data.user?.identities?.length === 0) {
-          // User exists but Supabase returns fake success for security
-          Alert.alert(t("auth.emailAlreadyRegistered"), t("auth.emailAlreadyRegisteredMessage"));
-        } else if (data.user && !data.session) {
-          // Email confirmation required — go to OTP screen
-          router.push({
-            pathname: "/(auth)/verify-otp" as any,
-            params: { email, type: "signup" },
-          });
+        const params = new URLSearchParams(url.hash.slice(1));
+        const accessToken = params.get("access_token");
+        const refreshToken = params.get("refresh_token");
+        if (accessToken && refreshToken) {
+          await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
         }
       }
     } catch (err: any) {
-      Alert.alert(t("common.error"), err.message ?? t("auth.genericError"));
+      Alert.alert(t("common.error"), err.message ?? t("auth.loginError"));
     } finally {
-      setLoading(false);
+      setLoadingGoogle(false);
     }
   };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 8 }}>
-          <Pressable onPress={() => router.back()} style={{ marginBottom: 32, alignSelf: "flex-start" }}>
-            <MingCuteIcon name="left-line" size={24} color={c.textPrimary} />
-          </Pressable>
+      <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center", paddingBottom: 48 }}>
+        <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 32, color: c.textPrimary, marginBottom: 8 }}>
+          {t("auth.loginTitle")}
+        </Text>
+        <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textSecondary, marginBottom: 40 }}>
+          {t("auth.loginSubtitle")}
+        </Text>
 
-          <Text style={{ fontFamily: "Rubik_600SemiBold", fontSize: 28, color: c.textPrimary, marginBottom: 8 }}>
-            {isLogin ? t("auth.loginTitle") : t("auth.register")}
-          </Text>
-          <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 15, color: c.textSecondary, marginBottom: 32 }}>
-            {isLogin ? t("auth.loginSubtitle") : t("auth.registerFormSubtitle")}
-          </Text>
-
-          <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textPrimary, marginBottom: 8 }}>
-            {t("auth.email")}
-          </Text>
-          <TextInput
-            value={email}
-            onChangeText={setEmail}
-            placeholder={t("auth.emailPlaceholder")}
-            placeholderTextColor={c.textTertiary}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{ backgroundColor: c.surfaceAlt, borderRadius: 14, paddingHorizontal: 16, height: 56, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, marginBottom: 16 }}
-          />
-
-          <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: c.textPrimary, marginBottom: 8 }}>
-            {t("auth.password")}
-          </Text>
-          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceAlt, borderRadius: 14, height: 56, marginBottom: isLogin ? 12 : 32 }}>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder={t("auth.passwordPlaceholder")}
-              placeholderTextColor={c.textTertiary}
-              secureTextEntry={!showPassword}
-              style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, paddingHorizontal: 16, height: 56 }}
-            />
-            <Pressable onPress={() => setShowPassword(!showPassword)} style={{ paddingRight: 16 }} hitSlop={8}>
-              <MingCuteIcon name={showPassword ? "eye-line" : "eye-close-line"} size={20} color={c.textTertiary} />
-            </Pressable>
+        <Pressable
+          onPress={handleGoogle}
+          disabled={loadingGoogle}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: c.surface,
+            borderRadius: 16,
+            height: 56,
+            paddingHorizontal: 16,
+            gap: 12,
+            opacity: loadingGoogle ? 0.7 : 1,
+          }}
+        >
+          <View style={{ width: 20, height: 20 }}>
+            {loadingGoogle ? <ActivityIndicator size="small" color={c.textPrimary} /> : <GoogleIcon />}
           </View>
-
-          {/* Forgot password */}
-          {isLogin && (
-            <Pressable
-              onPress={() => router.push("/(auth)/forgot-password" as any)}
-              style={{ alignSelf: "flex-end", marginBottom: 20 }}
-            >
-              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 13, color: c.textTertiary }}>
-                {t("auth.forgotPassword")}
-              </Text>
-            </Pressable>
-          )}
-
-          <Pressable
-            onPress={handleSubmit}
-            disabled={loading || !email || !password}
-            style={{ height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: email && password ? c.buttonPrimary : c.skeleton, marginBottom: 16 }}
-          >
-            {loading ? (
-              <ActivityIndicator color={c.buttonPrimaryText} />
-            ) : (
-              <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: email && password ? c.buttonPrimaryText : c.textTertiary }}>
-                {isLogin ? t("auth.login") : t("auth.register")}
-              </Text>
-            )}
-          </Pressable>
-
-          <Pressable onPress={() => setIsLogin(!isLogin)} style={{ alignItems: "center" }}>
-            <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textTertiary }}>
-              {isLogin ? `${t("auth.noAccount")} ` : `${t("auth.alreadyHaveAccount")} `}
-              <Text style={{ color: c.textPrimary, fontFamily: "Rubik_500Medium" }}>
-                {isLogin ? t("auth.register") : t("auth.login")}
-              </Text>
-            </Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+          <Text style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, textAlign: "center" }}>
+            {t("auth.continueWithGoogle")}
+          </Text>
+          <View style={{ width: 20 }} />
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }

@@ -23,11 +23,11 @@ function RecentSearchItem({
   return (
     <Pressable
       onPress={onPress}
-      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, height: 56 }}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 24, paddingVertical: 20 }}
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
         <MingCuteIcon name="time-line" size={20} color={colors.textTertiary} />
-        <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 15, color: colors.textMuted }} numberOfLines={1}>
+        <Text style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: colors.textSecondary }} numberOfLines={1}>
           {label}
         </Text>
       </View>
@@ -56,15 +56,15 @@ function SearchResultItem({
   return (
     <Pressable
       onPress={() => openItemDetail(item)}
-      style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 10, gap: 14 }}
+      style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 8, gap: 12 }}
     >
       {/* Thumbnail */}
-      <View style={{ width: 76, height: 76 }}>
-        <View style={{ width: 76, height: 76, borderRadius: 14, overflow: "hidden", backgroundColor: colors.surfaceAlt }}>
+      <View style={{ width: 72, height: 72 }}>
+        <View style={{ width: 72, height: 72, borderRadius: 12, overflow: "hidden", backgroundColor: colors.surfaceAlt }}>
           {imageSource && (
             <Image
               source={imageSource}
-              style={{ width: 76, height: 76 }}
+              style={{ width: 72, height: 72 }}
               contentFit="cover"
             />
           )}
@@ -75,7 +75,7 @@ function SearchResultItem({
       </View>
 
       {/* Text */}
-      <View style={{ flex: 1, justifyContent: "center", gap: 4 }}>
+      <View style={{ flex: 1, justifyContent: "center", gap: 16 }}>
         {collectionName && (
           <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 12, color: colors.textSecondary }}>
             {collectionName}

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { Platform } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
-import Constants from "expo-constants";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { supabase } from "@/lib/supabase";
@@ -44,34 +43,43 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-  if (!projectId) {
-    console.log("[Push] No EAS project ID found");
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync()).data;
+  } catch (e) {
+    // Android: Firebase/FCM yoksa (google-services.json + EAS FCM) token alınamaz
+    console.warn(
+      "[Push] Expo push token alınamadı — Android için Firebase/FCM kurulumu gerekir:",
+      e
+    );
     return null;
   }
 
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
   console.log("[Push] Token:", token);
 
-  await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+  try {
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    await supabase.from("push_tokens").upsert(
-      {
-        user_id: user.id,
-        expo_push_token: token,
-        platform: Platform.OS as "ios" | "android",
-        is_active: true,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "user_id,expo_push_token" }
-    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("push_tokens").upsert(
+        {
+          user_id: user.id,
+          expo_push_token: token,
+          platform: Platform.OS as "ios" | "android",
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id,expo_push_token" }
+      );
 
-    await supabase.from("notification_preferences").upsert(
-      { user_id: user.id },
-      { onConflict: "user_id", ignoreDuplicates: true }
-    );
+      await supabase.from("notification_preferences").upsert(
+        { user_id: user.id },
+        { onConflict: "user_id", ignoreDuplicates: true }
+      );
+    }
+  } catch (e) {
+    console.warn("[Push] Token kaydı başarısız:", e);
   }
 
   return token;

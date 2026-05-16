@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, StyleSheet } from "react-native";
 import Animated, {
   useSharedValue,
@@ -10,9 +10,27 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { Image } from "expo-image";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getLocales } from "expo-localization";
 
 interface AnimatedSplashProps {
   onFinish: () => void;
+}
+
+type SplashLang = "tr" | "en" | "fr" | "es";
+
+const MOTTOS: Record<SplashLang, string> = {
+  tr: "Kaydet. Bul. Sakla.",
+  en: "Save it. Find it. Keep it.",
+  fr: "Enregistrez. Trouvez. Gardez.",
+  es: "Guárdalo. Encuéntralo. Consérvalo.",
+};
+
+const SUPPORTED: SplashLang[] = ["tr", "en", "fr", "es"];
+
+function resolveDeviceLang(): SplashLang {
+  const code = getLocales()[0]?.languageCode ?? "tr";
+  return SUPPORTED.includes(code as SplashLang) ? (code as SplashLang) : "tr";
 }
 
 export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
@@ -21,6 +39,15 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
   const mottoOpacity = useSharedValue(0);
   const mottoTranslateY = useSharedValue(10);
   const screenOpacity = useSharedValue(1);
+  const [motto, setMotto] = useState<string>(() => MOTTOS[resolveDeviceLang()]);
+
+  useEffect(() => {
+    AsyncStorage.getItem("savely-language").then((saved) => {
+      if (saved && SUPPORTED.includes(saved as SplashLang)) {
+        setMotto(MOTTOS[saved as SplashLang]);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // 1. Logo fade in + scale
@@ -62,7 +89,7 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
       </Animated.View>
 
       <Animated.View style={mottoStyle}>
-        <Text style={styles.motto}>Save it. Find it. Keep it.</Text>
+        <Text style={styles.motto}>{motto}</Text>
       </Animated.View>
     </Animated.View>
   );
@@ -71,7 +98,7 @@ export function AnimatedSplash({ onFinish }: AnimatedSplashProps) {
 const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "#333333",
+    backgroundColor: "#27262b",
     alignItems: "center",
     justifyContent: "center",
     zIndex: 999,
@@ -80,6 +107,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 28,
+    backgroundColor: "#27262b",
   },
   motto: {
     fontFamily: "Rubik_400Regular",

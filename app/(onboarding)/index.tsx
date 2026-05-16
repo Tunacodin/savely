@@ -68,7 +68,7 @@ export default function Onboarding() {
       if (selectedCollections.length < 3) return;
       // Save selections for after login
       await AsyncStorage.setItem("pending_collections", JSON.stringify(selectedCollections));
-      router.replace("/(auth)/login");
+      router.replace("/(auth)/email-login");
     }
   };
 

@@ -61,6 +61,13 @@ export default {
     giveName: "Name your collection..",
     limitReached: "Collection Limit",
     limitReachedDesc: "You can create up to 3 collections on the free plan. Upgrade to Premium for more.",
+    sortTitle: "Sort",
+    sortNewest: "Newest",
+    sortOldest: "Oldest",
+    sortMostItems: "Most Items",
+    sortFewestItems: "Fewest Items",
+    sortAlphaAsc: "A → Z",
+    sortAlphaDesc: "Z → A",
   },
 
   // Profile
@@ -73,6 +80,7 @@ export default {
     language: "Language",
     goPremium: "Go Premium",
     accountSettings: "Account Settings",
+    preferences: "Preferences",
     privacyPolicy: "Privacy Policy",
     termsOfService: "Terms of Service",
     logout: "Log Out",
@@ -87,6 +95,9 @@ export default {
     password: "Password",
     logoutConfirm: "Are you sure you want to log out?",
     deleteAccount: "Delete Account",
+    deleteAccountConfirmTitle: "Delete account",
+    deleteAccountConfirmMessage: "Your account and all your data will be permanently deleted. This action cannot be undone.",
+    deleteAccountError: "Couldn't delete your account. Please try again.",
   },
 
   // Item Detail (Bottom Sheet)
@@ -98,6 +109,7 @@ export default {
     deleteConfirm: "Are you sure you want to delete this item?",
     addTitle: "Add title",
     showMore: "show more",
+    showLess: "show less",
   },
 
   // Save Item Form
@@ -108,6 +120,19 @@ export default {
     itemTitle: "Title",
     titlePlaceholder: "Add a title (optional)",
     collection: "Collection",
+    urlPlaceholder: "Paste or enter URL...",
+    listLater: "List Later",
+  },
+
+  // Preferences
+  preferences: {
+    title: "Preferences",
+    appearance: "Appearance",
+    theme: "Theme",
+    themeLight: "Light",
+    themeDark: "Dark",
+    themeSystem: "System",
+    language: "Language",
   },
 
   // Auth
@@ -121,6 +146,7 @@ export default {
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
     continueWithEmail: "Continue with Email",
+    orContinueWithEmail: "or continue with email",
     fullName: "Full Name",
     fullNamePlaceholder: "Your Name",
     fullNameRequired: "Full name is required",
@@ -204,6 +230,7 @@ export default {
     flexiblePricing: "Flexible pricing",
     perYear: "year",
     perMonth: "month",
+    perMonthShort: "/month",
   },
 
   // Notifications
@@ -226,15 +253,7 @@ export default {
   // Emoji Picker
   emojiPicker: {
     search: "Search emoji...",
-    food: "Food",
-    movies: "Movies",
-    books: "Books",
-    shopping: "Shopping",
-    travel: "Travel",
-    sports: "Sports",
-    music: "Music",
-    health: "Health",
-    other: "Other",
+    noResults: "No emoji found",
   },
 
   // Splash

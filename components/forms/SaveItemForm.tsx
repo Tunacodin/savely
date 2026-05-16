@@ -1,45 +1,47 @@
-import { useCallback, useMemo, useState, useRef, useEffect } from "react";
+import { useCallback, useMemo, useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import {
   View,
   Text,
   Pressable,
-  ActivityIndicator,
   TextInput,
   Image as RNImage,
+  ActivityIndicator,
 } from "react-native";
 import { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Image } from "expo-image";
-import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { useTranslation } from "react-i18next";
+import * as Clipboard from "expo-clipboard";
 import { MingCuteIcon } from "@/components/ui/mingcute-icon";
 import { PlatformBadge } from "@/components/ui/platform-badge";
 import { useSavedItemsStore } from "@/store/saved-items";
 import { useThemeColors } from "@/hooks/use-theme";
-import {
-  detectPlatform,
-  inferContentType,
-  extractUrlFromText,
-} from "@/utils/platform-detector";
+import { detectPlatform, inferContentType } from "@/utils/platform-detector";
 import { extractMetadata } from "@/services/metadata";
 import { isExpiringUrl, persistImage } from "@/lib/storage";
-import { DEFAULT_COLLECTIONS, type DefaultCollection } from "@/constants/default-collections";
+import { DEFAULT_COLLECTIONS, SAVE_LATER_COLLECTION, type DefaultCollection } from "@/constants/default-collections";
 import type { PlatformName } from "@/components/ui/platform-badge";
 import type { ContentType, SavedItemMetadata } from "@/types";
 
-interface SaveItemFormProps {
-  initialUrl?: string;
-  initialTitle?: string;
-  onClose: () => void;
-  onSuccess?: () => void;
+export interface SaveItemFormHandle {
+  submit: () => void;
 }
 
-export function SaveItemForm({
+interface SaveItemFormProps {
+  initialUrl?: string;
+  initialCollectionId?: string;
+  onClose: () => void;
+  onSuccess?: () => void;
+  onStateChange?: (state: { isValid: boolean; isSaving: boolean }) => void;
+}
+
+export const SaveItemForm = forwardRef<SaveItemFormHandle, SaveItemFormProps>(function SaveItemForm({
   initialUrl,
-  initialTitle,
+  initialCollectionId,
   onClose,
   onSuccess,
-}: SaveItemFormProps) {
+  onStateChange,
+}, ref) {
   const router = useRouter();
   const { t, i18n } = useTranslation();
   const c = useThemeColors();
@@ -49,16 +51,23 @@ export function SaveItemForm({
   const addCollection = useSavedItemsStore((s) => s.addCollection);
   const collections = useSavedItemsStore((s) => s.collections);
 
-  const [inputText, setInputText] = useState(initialUrl ?? "");
   const [url, setUrl] = useState(initialUrl ?? "");
-  const [title, setTitle] = useState(initialTitle ?? "");
-  const [selectedCollectionId, setSelectedCollectionId] = useState<string | undefined>();
+  const [title, setTitle] = useState("");
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | undefined>(initialCollectionId);
   const [collectionSearch, setCollectionSearch] = useState("");
+
+  useEffect(() => {
+    if (initialCollectionId && collections.some((c) => c.id === initialCollectionId)) {
+      setSelectedCollectionId(initialCollectionId);
+    }
+  }, [initialCollectionId, collections]);
 
   const [isLoadingMetadata, setIsLoadingMetadata] = useState(false);
   const [metadataTitle, setMetadataTitle] = useState("");
   const [metadataDescription, setMetadataDescription] = useState("");
   const [metadataImageUrl, setMetadataImageUrl] = useState<string | undefined>();
+  const [persistedImageUrl, setPersistedImageUrl] = useState<string | undefined>();
+  const persistKeyRef = useRef<string | null>(null);
   const [metadata, setMetadata] = useState<SavedItemMetadata>({});
   const [platform, setPlatform] = useState<PlatformName>("link");
   const [contentType, setContentType] = useState<ContentType>("link");
@@ -75,78 +84,96 @@ export function SaveItemForm({
     prevCollectionCount.current = collections.length;
   }, [collections]);
 
-  const processUrl = useCallback(
-    (targetUrl: string, fallbackTitle?: string) => {
-      setUrl(targetUrl);
-      setInputText(targetUrl);
-      setIsLoadingMetadata(true);
+  const processUrl = useCallback((targetUrl: string) => {
+    setUrl(targetUrl);
+    setIsLoadingMetadata(true);
+    setPersistedImageUrl(undefined);
+    persistKeyRef.current = null;
 
-      const detected = detectPlatform(targetUrl);
-      setPlatform(detected.platform);
-      setContentId(detected.contentId);
-      setContentType(inferContentType(detected.platform, targetUrl));
+    const detected = detectPlatform(targetUrl);
+    setPlatform(detected.platform);
+    setContentId(detected.contentId);
+    setContentType(inferContentType(detected.platform, targetUrl));
 
-      extractMetadata(targetUrl, detected.platform, detected.contentId)
-        .then((result) => {
-          setMetadata(result.metadata);
-          setMetadataTitle(result.title ?? fallbackTitle ?? "");
-          setMetadataDescription(result.metadata.ogDescription ?? "");
-          setMetadataImageUrl(result.imageUrl);
-          if (!title) setTitle(result.title ?? fallbackTitle ?? "");
-          if (result.imageUrl) {
-            RNImage.getSize(
-              result.imageUrl,
-              (w, h) => setImageAspectRatio(h > 0 && w > 0 ? h / w : 1.0),
-              () => setImageAspectRatio(1.0)
-            );
+    extractMetadata(targetUrl, detected.platform, detected.contentId)
+      .then((result) => {
+        setMetadata(result.metadata);
+        setMetadataTitle(result.title ?? "");
+        setMetadataDescription(result.metadata.ogDescription ?? "");
+        setMetadataImageUrl(result.imageUrl);
+        if (result.imageUrl) {
+          RNImage.getSize(
+            result.imageUrl,
+            (w, h) => setImageAspectRatio(h > 0 && w > 0 ? h / w : 1.0),
+            () => setImageAspectRatio(1.0)
+          );
+          if (isExpiringUrl(result.imageUrl)) {
+            const key = `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+            persistKeyRef.current = key;
+            persistImage(result.imageUrl, key)
+              .then((permanent) => {
+                if (persistKeyRef.current === key && permanent !== result.imageUrl) {
+                  setPersistedImageUrl(permanent);
+                }
+              })
+              .catch(() => {});
           }
-          setIsLoadingMetadata(false);
-        })
-        .catch(() => {
-          setMetadataTitle(fallbackTitle ?? "");
-          setIsLoadingMetadata(false);
-        });
-    },
-    [title]
-  );
+        }
+        setIsLoadingMetadata(false);
+      })
+      .catch(() => {
+        setMetadataTitle("");
+        setIsLoadingMetadata(false);
+      });
+  }, []);
 
-  const handleInputSubmit = useCallback(() => {
-    const extracted = extractUrlFromText(inputText.trim());
-    if (!extracted) return;
-    processUrl(extracted);
-  }, [inputText, processUrl]);
+  const initializedRef = useRef(false);
+  useEffect(() => {
+    if (initialUrl && !initializedRef.current) {
+      initializedRef.current = true;
+      processUrl(initialUrl);
+    }
+  }, [initialUrl, processUrl]);
 
-  const handleClearUrl = useCallback(() => {
+  const resetUrl = useCallback(() => {
     setUrl("");
-    setInputText("");
     setMetadataTitle("");
     setMetadataDescription("");
     setMetadataImageUrl(undefined);
+    setPersistedImageUrl(undefined);
+    persistKeyRef.current = null;
     setMetadata({});
     setPlatform("link");
     setContentType("link");
     setContentId(null);
-    setImageAspectRatio(1.0);
+    setIsLoadingMetadata(false);
+    initializedRef.current = false;
   }, []);
 
   const handlePaste = useCallback(async () => {
     const text = await Clipboard.getStringAsync();
-    if (text) {
-      setInputText(text);
-      const extracted = extractUrlFromText(text.trim());
-      if (extracted) processUrl(extracted);
-    }
+    if (text?.trim()) processUrl(text.trim());
   }, [processUrl]);
 
   const handleSave = useCallback(async () => {
     if (!url) return;
     setIsSaving(true);
 
+    let finalImageUrl = persistedImageUrl ?? metadataImageUrl;
+    if (
+      !persistedImageUrl &&
+      metadataImageUrl &&
+      isExpiringUrl(metadataImageUrl)
+    ) {
+      const key = persistKeyRef.current ?? `pending-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      finalImageUrl = await persistImage(metadataImageUrl, key);
+    }
+
     const id = await addItem({
       url,
-      title: title || metadataTitle || url,
+      title: title.trim() || metadataTitle || url,
       description: metadataDescription || metadata.ogDescription,
-      imageUrl: metadataImageUrl,
+      imageUrl: finalImageUrl,
       platform,
       contentType,
       metadata,
@@ -155,47 +182,45 @@ export function SaveItemForm({
       aspectRatio: imageAspectRatio,
     });
 
-    if (metadataImageUrl && isExpiringUrl(metadataImageUrl)) {
-      persistImage(metadataImageUrl, id).then((permanentUrl) => {
-        if (permanentUrl !== metadataImageUrl) {
-          updateItem(id, { imageUrl: permanentUrl });
-        }
-      });
-    }
-
     if (!metadata.ogTitle) {
       extractMetadata(url, platform, contentId)
         .then(async (result) => {
-          let finalImageUrl = result.imageUrl;
-          if (finalImageUrl && isExpiringUrl(finalImageUrl)) {
-            finalImageUrl = await persistImage(finalImageUrl, id);
+          let resultImageUrl = result.imageUrl;
+          if (resultImageUrl && isExpiringUrl(resultImageUrl)) {
+            resultImageUrl = await persistImage(resultImageUrl, id);
           }
-          enrichItem(id, result.metadata, result.title, finalImageUrl);
+          enrichItem(id, result.metadata, result.title, resultImageUrl);
         })
         .catch(() => {});
     }
 
     setIsSaving(false);
     onSuccess?.();
-  }, [url, title, metadataTitle, metadataDescription, metadata, metadataImageUrl, imageAspectRatio, platform, contentType, contentId, selectedCollectionId, addItem, enrichItem, updateItem, onSuccess]);
+  }, [url, title, metadataTitle, metadataDescription, metadata, metadataImageUrl, persistedImageUrl, imageAspectRatio, platform, contentType, contentId, selectedCollectionId, addItem, enrichItem, onSuccess]);
 
   const lang = (i18n.language as keyof DefaultCollection["name"]) || "tr";
 
   const canAdd = useSavedItemsStore((s) => s.canAddCollection)();
 
+  const saveLaterName = (SAVE_LATER_COLLECTION.name[lang] || SAVE_LATER_COLLECTION.name.en).toLowerCase();
+  const existingSaveLater = useMemo(
+    () => collections.find((col) => col.name.toLowerCase() === saveLaterName),
+    [collections, saveLaterName]
+  );
+
   const filteredCollections = useMemo(() => {
     const q = collectionSearch.trim().toLowerCase();
-    if (!q) return collections;
-    // Match user collections + default collection keywords
-    return collections.filter((col) => {
+    // Always exclude the "save later" collection — it's represented by the dedicated chip
+    const base = collections.filter((col) => col.name.toLowerCase() !== saveLaterName);
+    if (!q) return base;
+    return base.filter((col) => {
       if (col.name.toLowerCase().includes(q)) return true;
-      // Also match by default collection keywords
       const def = DEFAULT_COLLECTIONS.find(
         (d) => (d.name[lang] || d.name.en).toLowerCase() === col.name.toLowerCase()
       );
       return def?.keywords.some((k) => k.includes(q)) ?? false;
     });
-  }, [collections, collectionSearch, lang]);
+  }, [collections, collectionSearch, lang, saveLaterName]);
 
   // Default suggestions — only show collections that DON'T already exist
   const defaultSuggestions = useMemo(() => {
@@ -211,8 +236,19 @@ export function SaveItemForm({
 
   const isFormValid = !!url;
 
+  useImperativeHandle(ref, () => ({ submit: handleSave }), [handleSave]);
+
+  useEffect(() => {
+    onStateChange?.({ isValid: isFormValid, isSaving });
+  }, [isFormValid, isSaving, onStateChange]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: c.sheetBg, paddingBottom: 32, borderTopLeftRadius: 24, borderTopRightRadius: 24, overflow: "hidden" }}>
+    <BottomSheetScrollView
+      contentContainerStyle={{ paddingBottom: 16 }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      style={{ backgroundColor: c.sheetBg, borderRadius: 24, overflow: "hidden" }}
+    >
       {/* Handle */}
       <View style={{ alignItems: "center", paddingTop: 12, paddingBottom: 4 }}>
         <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: c.handleIndicator }} />
@@ -234,49 +270,52 @@ export function SaveItemForm({
       {/* Divider */}
       <View style={{ height: 1, backgroundColor: c.divider, marginBottom: 16 }} />
 
-      <BottomSheetScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 8 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        {/* Link */}
-        <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.textPrimary, marginBottom: 12 }}>
-          {t("saveForm.link")}
-        </Text>
-
-        {!url ? (
-          <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceAlt, borderRadius: 14, paddingHorizontal: 16, height: 56, marginBottom: 20 }}>
-            <TextInput
-              value={inputText}
-              onChangeText={setInputText}
-              onSubmitEditing={handleInputSubmit}
-              placeholder={t("saveForm.linkPlaceholder")}
-              placeholderTextColor={c.textTertiary}
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              returnKeyType="go"
-              style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary }}
-            />
-            <Pressable onPress={handlePaste} style={{ paddingLeft: 8 }}>
-              <MingCuteIcon name="clipboard-line" size={20} color={c.textTertiary} />
+      <View style={{ paddingHorizontal: 20 }}>
+        {/* URL Input */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: c.surfaceAlt,
+            borderRadius: 14,
+            paddingHorizontal: 12,
+            height: 56,
+            marginBottom: 16,
+            gap: 8,
+          }}
+        >
+          <MingCuteIcon name="link-2-line" size={18} color={c.textTertiary} />
+          <TextInput
+            value={url}
+            onChangeText={(v) => setUrl(v)}
+            onSubmitEditing={(e) => { if (e.nativeEvent.text.trim()) processUrl(e.nativeEvent.text.trim()); }}
+            placeholder={t("saveForm.urlPlaceholder")}
+            placeholderTextColor={c.textTertiary}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            returnKeyType="go"
+            style={{
+              flex: 1,
+              fontFamily: "Rubik_400Regular",
+              fontSize: 14,
+              color: c.textPrimary,
+              paddingVertical: 0,
+            }}
+          />
+          {url.length > 0 ? (
+            <Pressable onPress={resetUrl} hitSlop={8}>
+              <MingCuteIcon name="close-line" size={18} color={c.textTertiary} />
             </Pressable>
-          </View>
-        ) : (
-          <View style={{ marginBottom: 20 }}>
-            {/* URL chip */}
-            <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceAlt, borderRadius: 14, paddingHorizontal: 16, height: 56, marginBottom: 12 }}>
-              <MingCuteIcon name="link-2-line" size={18} color={c.textSecondary} />
-              <Text style={{ flex: 1, fontFamily: "Rubik_400Regular", fontSize: 14, color: c.textMuted, marginLeft: 10 }} numberOfLines={1}>
-                {url}
-              </Text>
-              <Pressable onPress={handleClearUrl} style={{ paddingLeft: 8 }}>
-                <MingCuteIcon name="close-line" size={18} color={c.textTertiary} />
-              </Pressable>
-            </View>
+          ) : (
+            <Pressable onPress={handlePaste} hitSlop={8}>
+              <MingCuteIcon name="clipboard-line" size={18} color={c.textTertiary} />
+            </Pressable>
+          )}
+        </View>
 
-            {/* Metadata preview */}
+        {url && (isLoadingMetadata || metadataTitle || metadataImageUrl) ? (
+          <View style={{ marginBottom: 20 }}>
             {isLoadingMetadata ? (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceAlt, borderRadius: 14, padding: 12 }}>
                 <View style={{ width: 56, height: 56, borderRadius: 10, backgroundColor: c.skeleton, alignItems: "center", justifyContent: "center" }}>
@@ -287,7 +326,7 @@ export function SaveItemForm({
                   <View style={{ height: 12, borderRadius: 6, backgroundColor: c.skeleton, width: "50%" }} />
                 </View>
               </View>
-            ) : (metadataTitle || metadataImageUrl) ? (
+            ) : (
               <View style={{ flexDirection: "row", alignItems: "center", backgroundColor: c.surfaceAlt, borderRadius: 14, padding: 12 }}>
                 {metadataImageUrl ? (
                   <Image source={{ uri: metadataImageUrl }} style={{ width: 56, height: 56, borderRadius: 10 }} contentFit="cover" />
@@ -312,21 +351,46 @@ export function SaveItemForm({
                   </View>
                 </View>
               </View>
-            ) : null}
+            )}
           </View>
-        )}
+        ) : null}
 
         {/* Title */}
         <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.textPrimary, marginBottom: 12 }}>
           {t("saveForm.itemTitle")}
         </Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder={t("saveForm.titlePlaceholder")}
-          placeholderTextColor={c.textTertiary}
-          style={{ fontFamily: "Rubik_400Regular", fontSize: 16, color: c.textPrimary, backgroundColor: c.surfaceAlt, borderRadius: 14, paddingHorizontal: 16, height: 56, marginBottom: 20 }}
-        />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: c.surfaceAlt,
+            borderRadius: 14,
+            paddingHorizontal: 12,
+            height: 56,
+            marginBottom: 20,
+            gap: 8,
+          }}
+        >
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t("saveForm.titlePlaceholder")}
+            placeholderTextColor={c.textTertiary}
+            style={{
+              flex: 1,
+              fontFamily: "Rubik_400Regular",
+              fontSize: 16,
+              color: c.textPrimary,
+              paddingVertical: 0,
+              minHeight: 44,
+            }}
+          />
+          {title.length > 0 ? (
+            <Pressable onPress={() => setTitle("")} hitSlop={8}>
+              <MingCuteIcon name="close-line" size={20} color={c.textTertiary} />
+            </Pressable>
+          ) : null}
+        </View>
 
         {/* Collection */}
         <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 16, color: c.textPrimary, marginBottom: 12 }}>
@@ -345,14 +409,22 @@ export function SaveItemForm({
 
         {/* Collection chips */}
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
-          <Pressable
-            onPress={() => setSelectedCollectionId(undefined)}
-            style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: !selectedCollectionId ? c.buttonPrimary : c.surfaceAlt }}
-          >
-            <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: !selectedCollectionId ? c.buttonPrimaryText : c.textMuted }}>
-              {t("common.none")}
-            </Text>
-          </Pressable>
+          {(() => {
+            const isSaveLaterSelected = existingSaveLater
+              ? selectedCollectionId === existingSaveLater.id
+              : !selectedCollectionId;
+            return (
+              <Pressable
+                onPress={() => setSelectedCollectionId(existingSaveLater ? existingSaveLater.id : undefined)}
+                style={{ flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: isSaveLaterSelected ? c.buttonPrimary : c.surfaceAlt, gap: 6 }}
+              >
+                {existingSaveLater && <Text style={{ fontSize: 14 }}>{existingSaveLater.emoji}</Text>}
+                <Text style={{ fontFamily: "Rubik_500Medium", fontSize: 14, color: isSaveLaterSelected ? c.buttonPrimaryText : c.textMuted }}>
+                  {t("saveForm.listLater")}
+                </Text>
+              </Pressable>
+            );
+          })()}
 
           {filteredCollections.map((col) => (
             <Pressable
@@ -406,14 +478,19 @@ export function SaveItemForm({
             </Text>
           </Pressable>
         </View>
-      </BottomSheetScrollView>
 
-      {/* Footer */}
-      <View style={{ paddingHorizontal: 20, paddingTop: 12 }}>
+        {/* Inline submit button */}
         <Pressable
           onPress={handleSave}
           disabled={!isFormValid || isSaving}
-          style={{ height: 56, borderRadius: 16, alignItems: "center", justifyContent: "center", backgroundColor: isFormValid ? c.buttonPrimary : c.skeleton }}
+          style={{
+            height: 56,
+            borderRadius: 16,
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: 24,
+            backgroundColor: isFormValid ? c.buttonPrimary : c.skeleton,
+          }}
         >
           {isSaving ? (
             <ActivityIndicator color={c.buttonPrimaryText} />
@@ -424,6 +501,6 @@ export function SaveItemForm({
           )}
         </Pressable>
       </View>
-    </View>
+    </BottomSheetScrollView>
   );
-}
+});

@@ -1,8 +1,9 @@
 {
   "expo": {
-    "name": "Savely",
+    "name": "Savely: Save & Organize",
     "description": "Save and organize content from any platform into your personal digital library.",
     "slug": "savely",
+    "owner": "omtunlabss-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -11,22 +12,24 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.tuna58.savelyapp",
-      "buildNumber": "1",
+      "bundleIdentifier": "com.savelyapp.savely",
+      "associatedDomains": [
+        "applinks:savely.app"
+      ],
       "privacyManifests": {
         "NSPrivacyAccessedAPITypes": []
       },
       "infoPlist": {
+        "CFBundleDisplayName": "Savely: Save & Organize",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "com.tuna58.savelyapp",
-      "versionCode": 1,
+      "softwareKeyboardLayoutMode": "resize",
+      "package": "com.savelyapp.savely",
       "adaptiveIcon": {
-        "backgroundColor": "#333333",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png"
+        "backgroundColor": "#27262b",
+        "foregroundImage": "./assets/images/android-icon-foreground.png"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -45,6 +48,9 @@
             "DEFAULT"
           ]
         }
+      ],
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -59,16 +65,24 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 288,
           "resizeMode": "contain",
-          "backgroundColor": "#333333",
+          "backgroundColor": "#27262b",
           "dark": {
-            "backgroundColor": "#333333"
+            "backgroundColor": "#27262b"
           }
         }
       ],
       "expo-font",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Savely needs access to your photo library to let you choose images for your profile.",
+          "cameraPermission": "Savely needs camera access if you choose to take a new photo for your profile."
+        }
+      ],
+      [
         "expo-share-intent",
         {
+          "iosAppGroupIdentifier": "group.com.savelyapp.savely",
           "iosActivationRules": {
             "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
             "NSExtensionActivationSupportsText": true
@@ -87,19 +101,20 @@
           "androidMode": "default",
           "androidCollapsedTitle": "Savely"
         }
-      ]
+      ],
+      "./plugins/with-android-sharing-shortcuts.js",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
     "extra": {
-      "privacyPolicyUrl": "https://savely.app/privacy",
+      "privacyPolicyUrl": "https://tunacodin.github.io/savely/privacy.html",
       "router": {},
       "eas": {
-        "projectId": "6244da3c-0b3a-4b80-88a5-f8f4558b27b8"
+        "projectId": "8bf772d1-5789-43ce-a6c1-db7ec819cbcb"
       }
-    },
-    "owner": "tunadev58"
+    }
   }
 }

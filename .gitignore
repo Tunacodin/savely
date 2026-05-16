@@ -33,9 +33,15 @@ yarn-error.*
 # local env files
 .env*.local
 
+# MCP config with secrets (Figma token, etc.)
+.mcp.json
+
 # Google Play service account key
 google-service-account.json
 savely-google-console-key.json
+
+# Yerel iOS cihaz UDID listesi (EAS / Apple Developer referansı)
+eas-devices.local.txt
 
 # typescript
 *.tsbuildinfo

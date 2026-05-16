@@ -103,6 +103,38 @@ async function fetchLinkPreview(url: string): Promise<MetadataResult | null> {
   }
 }
 
+// Tier 4: Microlink — handles login-walled platforms (Instagram, etc.) that block
+// plain OG scrapers. Free tier ~50 req/day per IP without an API key.
+async function fetchMicrolink(url: string): Promise<MetadataResult | null> {
+  try {
+    const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(url)}`;
+    const response = await withTimeout(fetch(apiUrl), TIMEOUT);
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.status !== "success" || !data.data) return null;
+    const d = data.data;
+    const image = d.image?.url ?? d.logo?.url;
+    return {
+      metadata: {
+        ogTitle: d.title,
+        ogDescription: d.description,
+        ogImage: image,
+        siteName: d.publisher,
+        author: d.author,
+      },
+      title: d.title,
+      imageUrl: image,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function hasUsefulMetadata(result: MetadataResult | null): result is MetadataResult {
+  if (!result) return false;
+  return !!(result.title || result.imageUrl);
+}
+
 export async function extractMetadata(
   url: string,
   platform: PlatformName,
@@ -112,7 +144,7 @@ export async function extractMetadata(
 
   // Tier 2: oEmbed
   const oembedResult = await fetchOEmbed(platform, url);
-  if (oembedResult) {
+  if (hasUsefulMetadata(oembedResult)) {
     return {
       ...oembedResult,
       imageUrl: oembedResult.imageUrl ?? directThumb ?? undefined,
@@ -121,10 +153,19 @@ export async function extractMetadata(
 
   // Tier 3: Link preview
   const previewResult = await fetchLinkPreview(url);
-  if (previewResult) {
+  if (hasUsefulMetadata(previewResult)) {
     return {
       ...previewResult,
       imageUrl: previewResult.imageUrl ?? directThumb ?? undefined,
+    };
+  }
+
+  // Tier 4: Microlink (covers Instagram and other login-walled platforms)
+  const microlinkResult = await fetchMicrolink(url);
+  if (hasUsefulMetadata(microlinkResult)) {
+    return {
+      ...microlinkResult,
+      imageUrl: microlinkResult.imageUrl ?? directThumb ?? undefined,
     };
   }
 
