@@ -29,7 +29,7 @@ class FloatingBubbleModule : Module() {
         }
 
         AsyncFunction("requestOverlayPermission") { ->
-            val ctx = appContext.reactContext ?: return@AsyncFunction
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(ctx)) {
                 ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -38,22 +38,22 @@ class FloatingBubbleModule : Module() {
         }
 
         AsyncFunction("requestAccessibilityPermission") { ->
-            val ctx = appContext.reactContext ?: return@AsyncFunction
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
             ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             })
         }
 
         AsyncFunction("startBubble") { ->
-            val ctx = appContext.reactContext ?: return@AsyncFunction
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
             val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(ctx) else true
-            if (!hasOverlay) return@AsyncFunction
+            if (!hasOverlay) return@AsyncFunction null
             val intent = Intent(ctx, FloatingBubbleService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(intent) else ctx.startService(intent)
         }
 
         AsyncFunction("stopBubble") { ->
-            val ctx = appContext.reactContext ?: return@AsyncFunction
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
             ctx.stopService(Intent(ctx, FloatingBubbleService::class.java))
         }
 
@@ -62,7 +62,7 @@ class FloatingBubbleModule : Module() {
         }
 
         AsyncFunction("updateCollections") { collections: List<CollectionRecord> ->
-            val ctx = appContext.reactContext ?: return@AsyncFunction
+            val ctx = appContext.reactContext ?: return@AsyncFunction null
             SharedStore.setCollections(ctx, collections.map {
                 SharedStore.CollectionData(it.id, it.name, it.emoji, it.bgColor)
             })

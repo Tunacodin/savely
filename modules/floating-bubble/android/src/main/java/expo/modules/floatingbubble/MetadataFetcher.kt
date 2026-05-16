@@ -69,7 +69,8 @@ object MetadataFetcher {
         )
     } catch (_: Throwable) { null }
 
-    private fun fetchOgTags(url: String, platform: String): ContentMetadata? = try {
+    private fun fetchOgTags(url: String, platform: String): ContentMetadata? {
+        return try {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = TIMEOUT
             readTimeout = TIMEOUT
@@ -101,9 +102,11 @@ object MetadataFetcher {
             siteName = (OG_SITE.find(html) ?: OG_SITE_ALT.find(html))?.groupValues?.getOrNull(1)?.trim(),
             platform = platform,
         )
-    } catch (_: Throwable) { null }
+        } catch (_: Throwable) { null }
+    }
 
-    private fun fetchMicrolink(url: String, platform: String): ContentMetadata? = try {
+    private fun fetchMicrolink(url: String, platform: String): ContentMetadata? {
+        return try {
         val apiUrl = "https://api.microlink.io/?url=${URLEncoder.encode(url, "UTF-8")}"
         val json = getJson(apiUrl) ?: return null
         if (json.optString("status") != "success") return null
@@ -118,7 +121,8 @@ object MetadataFetcher {
             siteName = d.optString("publisher").takeIf { it.isNotBlank() },
             platform = platform,
         )
-    } catch (_: Throwable) { null }
+        } catch (_: Throwable) { null }
+    }
 
     private fun getJson(url: String): JSONObject? {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
