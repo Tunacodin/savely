@@ -54,13 +54,13 @@ class CollectionPickerOverlay(
 
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
-            background = roundedBg(Color.parseColor("#1c1b22"), px(20f))
+            background = roundedBg(Color.parseColor("#1c1b22"), px(20f).toFloat())
             setPadding(px(16f), px(10f), px(16f), px(28f))
         }
 
         // Drag handle
         container.addView(View(context).apply {
-            background = roundedBg(Color.parseColor("#4a4a5a"), px(2f))
+            background = roundedBg(Color.parseColor("#4a4a5a"), px(2f).toFloat())
         }, llp(px(36f), px(4f)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = px(14f) })
 
         // Content title preview
@@ -113,7 +113,7 @@ class CollectionPickerOverlay(
         return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            background = roundedBg(Color.parseColor("#2a2935"), px(12f))
+            background = roundedBg(Color.parseColor("#2a2935"), px(12f).toFloat())
             setPadding(px(8f), px(14f), px(8f), px(14f))
             isClickable = true
             isFocusable = true
