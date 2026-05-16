@@ -49,7 +49,9 @@ class CollectionPickerOverlay(
     }
 
     private fun buildRoot(): View {
-        val px = ::px
+        val MP = LinearLayout.LayoutParams.MATCH_PARENT
+        val WC = LinearLayout.LayoutParams.WRAP_CONTENT
+
         val container = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             background = roundedBg(Color.parseColor("#1c1b22"), px(20f))
@@ -59,7 +61,7 @@ class CollectionPickerOverlay(
         // Drag handle
         container.addView(View(context).apply {
             background = roundedBg(Color.parseColor("#4a4a5a"), px(2f))
-        }, LayoutParams(px(36f), px(4f)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = px(14f) })
+        }, llp(px(36f), px(4f)).also { it.gravity = Gravity.CENTER_HORIZONTAL; it.bottomMargin = px(14f) })
 
         // Content title preview
         if (!metadata.title.isNullOrBlank()) {
@@ -69,7 +71,7 @@ class CollectionPickerOverlay(
                 textSize = 13f
                 maxLines = 2
                 ellipsize = TextUtils.TruncateAt.END
-            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).also { it.bottomMargin = px(14f) })
+            }, llp(MP, WC).also { it.bottomMargin = px(14f) })
         }
 
         // Section label
@@ -77,18 +79,18 @@ class CollectionPickerOverlay(
             text = "Koleksiyon seç"
             setTextColor(Color.parseColor("#6b7280"))
             textSize = 11f
-        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).also { it.bottomMargin = px(8f) })
+        }, llp(MP, WC).also { it.bottomMargin = px(8f) })
 
         // Collection buttons row (top 3)
         val row = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL }
         val topCols = collections.take(3)
         topCols.forEachIndexed { i, col ->
             val btn = buildCollectionBtn(col)
-            val lp = LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f)
-            if (i < topCols.lastIndex) lp.marginEnd = px(8f)
-            row.addView(btn, lp)
+            val btnLp = llp(0, WC, 1f)
+            if (i < topCols.lastIndex) btnLp.marginEnd = px(8f)
+            row.addView(btn, btnLp)
         }
-        container.addView(row, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).also { it.bottomMargin = px(6f) })
+        container.addView(row, llp(MP, WC).also { it.bottomMargin = px(6f) })
 
         // "Save without collection" link
         container.addView(TextView(context).apply {
@@ -100,13 +102,15 @@ class CollectionPickerOverlay(
             isClickable = true
             isFocusable = true
             setOnClickListener { dismiss(); onSelected(null) }
-        }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))
+        }, llp(MP, WC))
 
         return container
     }
 
-    private fun buildCollectionBtn(col: SharedStore.CollectionData): View =
-        LinearLayout(context).apply {
+    private fun buildCollectionBtn(col: SharedStore.CollectionData): View {
+        val MP = LinearLayout.LayoutParams.MATCH_PARENT
+        val WC = LinearLayout.LayoutParams.WRAP_CONTENT
+        return LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             background = roundedBg(Color.parseColor("#2a2935"), px(12f))
@@ -119,7 +123,7 @@ class CollectionPickerOverlay(
                 text = col.emoji.ifEmpty { "📁" }
                 textSize = 22f
                 gravity = Gravity.CENTER
-            }, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT).also { it.bottomMargin = px(4f) })
+            }, llp(MP, WC).also { it.bottomMargin = px(4f) })
 
             addView(TextView(context).apply {
                 text = col.name
@@ -130,6 +134,7 @@ class CollectionPickerOverlay(
                 ellipsize = TextUtils.TruncateAt.END
             })
         }
+    }
 
     private fun roundedBg(color: Int, cornerPx: Float): GradientDrawable =
         GradientDrawable().apply {
@@ -139,6 +144,6 @@ class CollectionPickerOverlay(
         }
 
     private fun px(dp: Float) = (dp * this.dp).toInt()
-    private fun LayoutParams(w: Int, h: Int) = LinearLayout.LayoutParams(w, h)
-    private fun LayoutParams(w: Int, h: Int, weight: Float) = LinearLayout.LayoutParams(w, h, weight)
+    private fun llp(w: Int, h: Int) = LinearLayout.LayoutParams(w, h)
+    private fun llp(w: Int, h: Int, weight: Float) = LinearLayout.LayoutParams(w, h, weight)
 }
