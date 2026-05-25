@@ -5,5 +5,5 @@
     android:accessibilityFlags="flagRetrieveInteractiveWindows"
     android:canRetrieveWindowContent="true"
     android:description="@string/savely_bubble_accessibility_description"
-    android:notificationTimeout="200"
-    android:packageNames="com.instagram.android,com.twitter.android,com.x.android,com.linkedin.android,com.google.android.youtube,com.google.android.apps.maps" />
+    android:isAccessibilityTool="false"
+    android:notificationTimeout="200" />

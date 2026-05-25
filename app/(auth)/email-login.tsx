@@ -5,12 +5,12 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  BackHandler,
+  Platform,
 } from "react-native";
-import { useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import * as WebBrowser from "expo-web-browser";
+import * as AppleAuthentication from "expo-apple-authentication";
 import Svg, { Path } from "react-native-svg";
 import { supabase } from "@/lib/supabase";
 import { useThemeColors } from "@/hooks/use-theme";
@@ -32,6 +32,7 @@ export default function EmailLoginScreen() {
   const c = useThemeColors();
   const { t } = useTranslation();
   const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingApple, setLoadingApple] = useState(false);
 
   const handleGoogle = async () => {
     setLoadingGoogle(true);
@@ -65,6 +66,30 @@ export default function EmailLoginScreen() {
     }
   };
 
+  const handleApple = async () => {
+    setLoadingApple(true);
+    try {
+      const credential = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      if (!credential.identityToken) throw new Error("No identity token");
+      const { error } = await supabase.auth.signInWithIdToken({
+        provider: "apple",
+        token: credential.identityToken,
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      if (err.code !== "ERR_REQUEST_CANCELED") {
+        Alert.alert(t("common.error"), err.message ?? t("auth.loginError"));
+      }
+    } finally {
+      setLoadingApple(false);
+    }
+  };
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: c.background }}>
       <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center", paddingBottom: 48 }}>
@@ -77,7 +102,7 @@ export default function EmailLoginScreen() {
 
         <Pressable
           onPress={handleGoogle}
-          disabled={loadingGoogle}
+          disabled={loadingGoogle || loadingApple}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -97,6 +122,20 @@ export default function EmailLoginScreen() {
           </Text>
           <View style={{ width: 20 }} />
         </Pressable>
+
+        {Platform.OS === "ios" && (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={
+              c.background === "#ffffff" || c.background === "#FFFFFF"
+                ? AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+                : AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+            }
+            cornerRadius={16}
+            style={{ height: 56, marginTop: 16 }}
+            onPress={handleApple}
+          />
+        )}
       </View>
     </SafeAreaView>
   );

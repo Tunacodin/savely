@@ -5,7 +5,8 @@ import android.animation.AnimatorListenerAdapter
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
 import android.os.Handler
 import android.os.Looper
 import android.view.MotionEvent
@@ -16,17 +17,15 @@ import kotlin.math.abs
 
 class BubbleView(context: Context) : View(context) {
 
-    // Callback receives the screen coordinates where the bubble was released
     var onDrop: ((screenX: Float, screenY: Float) -> Unit)? = null
 
     private var wm: WindowManager? = null
     private var params: WindowManager.LayoutParams? = null
 
-    // ---- Paint objects ----
     private val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = PRIMARY_COLOR
+        color = BG_COLOR
         style = Paint.Style.FILL
-        setShadowLayer(10f, 0f, 4f, Color.argb(80, 0, 0, 0))
+        setShadowLayer(12f, 0f, 4f, Color.argb(120, 0, 0, 0))
     }
     private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -43,7 +42,7 @@ class BubbleView(context: Context) : View(context) {
         strokeJoin = Paint.Join.ROUND
     }
     private val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = PRIMARY_COLOR
+        color = Color.parseColor("#6366f1")
         style = Paint.Style.FILL
     }
     private val spinnerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -52,14 +51,17 @@ class BubbleView(context: Context) : View(context) {
         strokeWidth = 3f
         strokeCap = Paint.Cap.ROUND
     }
+    private val bitmapPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        isFilterBitmap = true
+    }
 
-    // ---- State ----
     private enum class State { IDLE, DRAGGING, ANALYZING, SUCCESS, ERROR }
     private var state = State.IDLE
 
     private var pulseScale = 1f
     private var checkProgress = 0f
     private var spinnerAngle = 0f
+    private var drawScale = 0.65f
 
     private var touchStartX = 0f
     private var touchStartY = 0f
@@ -67,8 +69,14 @@ class BubbleView(context: Context) : View(context) {
     private var startParamY = 0
     private var isDragging = false
 
+    private var appIconBitmap: Bitmap? = null
+    private val iconSrcRect = Rect()
+    private val iconDstRectF = RectF()
+    private val clipPath = Path()
+
     private var pulseAnimator: ValueAnimator? = null
     private var successAnimator: ValueAnimator? = null
+    private var scaleAnimator: ValueAnimator? = null
     private val handler = Handler(Looper.getMainLooper())
     private val spinnerTick = object : Runnable {
         override fun run() {
@@ -79,9 +87,29 @@ class BubbleView(context: Context) : View(context) {
     }
 
     companion object {
-        private val PRIMARY_COLOR = Color.parseColor("#6366f1")
+        private val BG_COLOR = Color.parseColor("#0f0f0f")
         private val SUCCESS_COLOR = Color.parseColor("#22c55e")
         private val ERROR_COLOR = Color.parseColor("#ef4444")
+    }
+
+    init {
+        try {
+            val drawable = context.packageManager
+                .getApplicationInfo(context.packageName, 0)
+                .loadIcon(context.packageManager)
+            appIconBitmap = drawableToBitmap(drawable)
+        } catch (_: Throwable) {}
+    }
+
+    private fun drawableToBitmap(drawable: Drawable): Bitmap {
+        if (drawable is BitmapDrawable && drawable.bitmap != null) return drawable.bitmap
+        val w = drawable.intrinsicWidth.takeIf { it > 0 } ?: 96
+        val h = drawable.intrinsicHeight.takeIf { it > 0 } ?: 96
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        drawable.setBounds(0, 0, w, h)
+        drawable.draw(canvas)
+        return bmp
     }
 
     fun attachToWindowManager(wm: WindowManager, params: WindowManager.LayoutParams) {
@@ -92,7 +120,12 @@ class BubbleView(context: Context) : View(context) {
 
     fun setAnalyzing(analyzing: Boolean) {
         state = if (analyzing) State.ANALYZING else State.IDLE
-        if (analyzing) startPulse() else stopPulse()
+        if (analyzing) {
+            animateScale(to = 1f, duration = 150)
+            startPulse()
+        } else {
+            stopPulse()
+        }
         invalidate()
     }
 
@@ -110,7 +143,7 @@ class BubbleView(context: Context) : View(context) {
             }
             addListener(object : AnimatorListenerAdapter() {
                 override fun onAnimationEnd(animation: Animator) {
-                    bgPaint.color = PRIMARY_COLOR
+                    bgPaint.color = BG_COLOR
                     state = State.IDLE
                     snapToEdge()
                     invalidate()
@@ -126,7 +159,7 @@ class BubbleView(context: Context) : View(context) {
         bgPaint.color = ERROR_COLOR
         invalidate()
         handler.postDelayed({
-            bgPaint.color = PRIMARY_COLOR
+            bgPaint.color = BG_COLOR
             state = State.IDLE
             snapToEdge()
             invalidate()
@@ -136,33 +169,54 @@ class BubbleView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val cx = width / 2f
         val cy = height / 2f
-        val r = cx - 4f
+        val maxR = cx - 4f
+        val r = maxR * drawScale
 
         when (state) {
-            State.IDLE, State.ERROR -> {
-                bgPaint.alpha = 200
+            State.IDLE -> {
+                bgPaint.alpha = 210
+                canvas.drawCircle(cx, cy, r, bgPaint)
+                drawAppIcon(canvas, cx, cy, r * 0.64f)
+            }
+            State.ERROR -> {
+                bgPaint.alpha = 255
                 canvas.drawCircle(cx, cy, r, bgPaint)
                 drawBookmark(canvas, cx, cy, r * 0.42f)
             }
             State.DRAGGING -> {
                 bgPaint.alpha = 255
-                canvas.drawCircle(cx, cy, r, bgPaint)
-                drawBookmark(canvas, cx, cy, r * 0.42f)
+                canvas.drawCircle(cx, cy, maxR, bgPaint)
+                drawAppIcon(canvas, cx, cy, maxR * 0.64f)
             }
             State.ANALYZING -> {
                 pulsePaint.alpha = (55 * (2f - pulseScale)).toInt().coerceIn(0, 55)
-                canvas.drawCircle(cx, cy, r * pulseScale.coerceAtMost(1.5f), pulsePaint)
+                canvas.drawCircle(cx, cy, maxR * pulseScale.coerceAtMost(1.5f), pulsePaint)
                 bgPaint.alpha = 255
-                canvas.drawCircle(cx, cy, r, bgPaint)
-                val oval = RectF(cx - r * 0.45f, cy - r * 0.45f, cx + r * 0.45f, cy + r * 0.45f)
+                canvas.drawCircle(cx, cy, maxR, bgPaint)
+                val oval = RectF(cx - maxR * 0.45f, cy - maxR * 0.45f, cx + maxR * 0.45f, cy + maxR * 0.45f)
                 canvas.drawArc(oval, spinnerAngle, 270f, false, spinnerPaint)
             }
             State.SUCCESS -> {
                 bgPaint.alpha = 255
-                canvas.drawCircle(cx, cy, r, bgPaint)
-                drawCheckmark(canvas, cx, cy, r * 0.38f, checkProgress)
+                canvas.drawCircle(cx, cy, maxR, bgPaint)
+                drawCheckmark(canvas, cx, cy, maxR * 0.38f, checkProgress)
             }
         }
+    }
+
+    private fun drawAppIcon(canvas: Canvas, cx: Float, cy: Float, iconRadius: Float) {
+        val bmp = appIconBitmap ?: run {
+            drawBookmark(canvas, cx, cy, iconRadius * 0.7f)
+            return
+        }
+        clipPath.reset()
+        clipPath.addCircle(cx, cy, iconRadius, Path.Direction.CW)
+        canvas.save()
+        canvas.clipPath(clipPath)
+        iconSrcRect.set(0, 0, bmp.width, bmp.height)
+        iconDstRectF.set(cx - iconRadius, cy - iconRadius, cx + iconRadius, cy + iconRadius)
+        canvas.drawBitmap(bmp, iconSrcRect, iconDstRectF, bitmapPaint)
+        canvas.restore()
     }
 
     private fun drawBookmark(canvas: Canvas, cx: Float, cy: Float, s: Float) {
@@ -197,6 +251,16 @@ class BubbleView(context: Context) : View(context) {
 
     private fun lerp(a: Float, b: Float, t: Float) = a + (b - a) * t
 
+    private fun animateScale(to: Float, duration: Long) {
+        scaleAnimator?.cancel()
+        val from = drawScale
+        scaleAnimator = ValueAnimator.ofFloat(from, to).apply {
+            this.duration = duration
+            addUpdateListener { drawScale = it.animatedValue as Float; invalidate() }
+            start()
+        }
+    }
+
     private fun startPulse() {
         pulseAnimator?.cancel()
         pulseScale = 1f
@@ -226,6 +290,7 @@ class BubbleView(context: Context) : View(context) {
                 startParamX = p.x
                 startParamY = p.y
                 isDragging = false
+                animateScale(to = 1f, duration = 120)
                 true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -246,10 +311,10 @@ class BubbleView(context: Context) : View(context) {
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (isDragging) {
-                    // Pass raw screen coordinates so the service can find the card at this point
                     onDrop?.invoke(event.rawX, event.rawY)
                 } else {
                     state = State.IDLE
+                    animateScale(to = 0.65f, duration = 200)
                     invalidate()
                 }
                 isDragging = false
@@ -271,6 +336,11 @@ class BubbleView(context: Context) : View(context) {
                 p.x = it.animatedValue as Int
                 try { w.updateViewLayout(this@BubbleView, p) } catch (_: Throwable) {}
             }
+            addListener(object : AnimatorListenerAdapter() {
+                override fun onAnimationEnd(animation: Animator) {
+                    if (state == State.IDLE) animateScale(to = 0.65f, duration = 200)
+                }
+            })
             start()
         }
     }
@@ -278,6 +348,7 @@ class BubbleView(context: Context) : View(context) {
     fun cleanup() {
         stopPulse()
         successAnimator?.cancel()
+        scaleAnimator?.cancel()
         handler.removeCallbacksAndMessages(null)
     }
 }

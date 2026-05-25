@@ -2,8 +2,8 @@ package expo.modules.floatingbubble
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ClipboardManager
 import android.graphics.Rect
-import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 
@@ -21,14 +21,8 @@ class SavelyAccessibilityService : AccessibilityService() {
         private val COUNT_RE = Regex("^[\\d.,]+[KMB]?\\s*(likes?|comments?|views?|followers?|reposts?|retweets?|shares?)$", RegexOption.IGNORE_CASE)
         private val TIME_RE = Regex("^(\\d+\\s*(s|m|h|d|w|mo|hr|min|sec|second|minute|hour|day|week|month)s?|just now|now)$", RegexOption.IGNORE_CASE)
 
-        // Target packages we handle
-        private val TARGET_PACKAGES = arrayOf(
-            "com.instagram.android",
-            "com.twitter.android",
-            "com.x.android",
-            "com.linkedin.android",
-            "com.google.android.youtube",
-            "com.google.android.apps.maps",
+        private val SOCIAL_NATIVE_PKGS = setOf(
+            "instagram", "twitter", "youtube", "linkedin", "tiktok"
         )
     }
 
@@ -37,7 +31,7 @@ class SavelyAccessibilityService : AccessibilityService() {
         serviceInfo = AccessibilityServiceInfo().apply {
             eventTypes = AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
             feedbackType = AccessibilityServiceInfo.FEEDBACK_GENERIC
-            packageNames = TARGET_PACKAGES
+            packageNames = null
             notificationTimeout = 500
             flags = AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
         }
@@ -75,20 +69,131 @@ class SavelyAccessibilityService : AccessibilityService() {
             val screenWidth = resources.displayMetrics.widthPixels
             val minCardWidth = (screenWidth * 0.68).toInt()
 
-            val allTexts = mutableListOf<String>()
+            // Step 1: Browser URL bar — covers Chrome/Firefox viewing any website
+            val browserUrl = findBrowserUrl(root, pkg)
+            SavelyLog.d("A11y", "browserUrl=$browserUrl")
+
+            // Step 2: Spatial card detection at touch point
+            val cardTexts = mutableListOf<String>()
+            val cardUrls = mutableListOf<String>()
+            findCardAndCollect(root, screenX, screenY, minCardWidth, cardTexts, cardUrls, depth = 0)
+
+            // Step 3: Merge URLs — browser URL has priority
             val allUrls = mutableListOf<String>()
+            if (browserUrl != null) allUrls.add(browserUrl)
+            cardUrls.forEach { if (it !in allUrls) allUrls.add(it) }
 
-            findCardAndCollect(root, screenX, screenY, minCardWidth, allTexts, allUrls, depth = 0)
+            // Step 4: Wide tree scan if still no URL found (catches native app deep links)
+            if (allUrls.isEmpty()) {
+                collectUrlsWide(root, allUrls, depth = 0)
+                SavelyLog.d("A11y", "wide scan → ${allUrls.size} urls")
+            }
 
-            SavelyLog.d("A11y", "collected texts=${allTexts.size} urls=${allUrls.size} | first=${allTexts.firstOrNull()?.take(60)}")
+            val pkgPlatform0 = platformFromPkg(pkg)
 
-            if (allTexts.isEmpty() && allUrls.isEmpty()) {
+            // Step 5: Clipboard — native social apps check proactively regardless of allUrls state
+            // because allUrls may contain CDN image URLs or caption links, not the actual post URL.
+            // Browsers: clipboard only as last resort.
+            if (pkgPlatform0 != "link") {
+                val clipUrl = readClipboardUrl(pkg)
+                if (clipUrl != null && clipUrl !in allUrls) {
+                    // Insert at front so it beats CDN/caption URLs in findCanonicalUrl
+                    allUrls.add(0, clipUrl)
+                    SavelyLog.d("A11y", "clipboard proactive → $clipUrl")
+                }
+            } else if (allUrls.isEmpty()) {
+                val clipUrl = readClipboardUrl(pkg)
+                if (clipUrl != null) allUrls.add(clipUrl)
+            }
+
+            // Step 6: Auto trigger "More options → Copy link" when no specific post URL found yet
+            if (pkgPlatform0 in SOCIAL_NATIVE_PKGS && !hasSpecificPostUrl(allUrls, pkgPlatform0)) {
+                SavelyLog.d("A11y", "autoExtract: attempting for $pkg")
+                val autoUrl = tryAutoExtractUrl(pkg, screenX, screenY)
+                if (autoUrl != null && autoUrl !in allUrls) allUrls.add(0, autoUrl)
+            }
+
+            SavelyLog.d("A11y", "texts=${cardTexts.size} urls=${allUrls.size} | first=${cardTexts.firstOrNull()?.take(60)}")
+
+            if (cardTexts.isEmpty() && allUrls.isEmpty()) {
                 SavelyLog.w("A11y", "no content found at ($screenX,$screenY) in $pkg")
                 return null
             }
-            buildContentMetadata(allTexts, allUrls, pkg)
+            buildContentMetadata(cardTexts, allUrls, pkg)
         } finally {
             root.recycle()
+        }
+    }
+
+    private fun findBrowserUrl(root: AccessibilityNodeInfo, pkg: String): String? {
+        val urlBarId = when {
+            pkg == "com.android.chrome" || pkg.startsWith("com.chrome.") -> "$pkg:id/url_bar"
+            pkg.startsWith("org.mozilla.firefox") -> "$pkg:id/mozac_browser_toolbar_url_view"
+            pkg == "com.sec.android.app.sbrowser" -> "$pkg:id/location_bar_edit_text"
+            pkg.startsWith("com.microsoft.emmx") -> "$pkg:id/url_bar"
+            pkg.startsWith("com.brave.browser") -> "$pkg:id/url_bar"
+            pkg == "com.opera.browser" || pkg == "com.opera.mini.native" -> "$pkg:id/url_field"
+            else -> return null
+        }
+        // Active window first
+        extractUrlFromNodes(root.findAccessibilityNodeInfosByViewId(urlBarId))?.let { return it }
+        // Fallback: search all windows (Chrome toolbar can be in a separate layer)
+        return try {
+            windows?.firstNotNullOfOrNull { window ->
+                val r = window.root ?: return@firstNotNullOfOrNull null
+                try { extractUrlFromNodes(r.findAccessibilityNodeInfosByViewId(urlBarId)) }
+                finally { r.recycle() }
+            }
+        } catch (_: Throwable) { null }
+    }
+
+    private fun extractUrlFromNodes(nodes: List<AccessibilityNodeInfo>): String? {
+        var found: String? = null
+        for (node in nodes) {
+            if (found == null) {
+                val raw = node.contentDescription?.toString()?.trim()
+                    ?: node.text?.toString()?.trim()
+                if (raw != null && raw.isNotEmpty()) {
+                    found = when {
+                        raw.startsWith("https://") || raw.startsWith("http://") -> raw
+                        raw.contains(".") && !raw.contains(" ") && raw.length > 5 -> "https://$raw"
+                        else -> null
+                    }
+                }
+            }
+            node.recycle()
+        }
+        return found
+    }
+
+    private fun readClipboardUrl(pkg: String): String? {
+        return try {
+            val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = cm.primaryClip ?: return null
+            if (clip.itemCount == 0) return null
+            val text = clip.getItemAt(0).coerceToText(this).toString().trim()
+            if (!text.startsWith("http://") && !text.startsWith("https://")) return null
+            val platform = platformFromPkg(pkg)
+            // For native social apps, verify clipboard URL matches platform
+            if (platform != "link" && !matchesPlatform(text, platform)) return null
+            SavelyLog.d("A11y", "clipboard fallback → $text")
+            text
+        } catch (_: Throwable) { null }
+    }
+
+    private fun collectUrlsWide(node: AccessibilityNodeInfo, urls: MutableList<String>, depth: Int) {
+        if (depth > 10 || urls.size >= 5) return
+        listOfNotNull(
+            node.text?.toString()?.trim(),
+            node.contentDescription?.toString()?.trim(),
+        ).forEach { raw ->
+            URL_RE.findAll(raw).map { it.value }
+                .filter { it !in urls && !isImageUrl(it) }
+                .forEach { urls.add(it) }
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            collectUrlsWide(child, urls, depth + 1)
         }
     }
 
@@ -152,10 +257,14 @@ class SavelyAccessibilityService : AccessibilityService() {
     // ---- Content parsing ----
 
     private fun buildContentMetadata(texts: List<String>, rawUrls: List<String>, pkg: String): ContentMetadata {
-        val platform = platformFromPkg(pkg)
+        val pkgPlatform = platformFromPkg(pkg)
 
-        // Try to find/construct a canonical URL
-        val url = findCanonicalUrl(rawUrls, texts, platform)
+        // Find canonical URL using pkg-derived platform for strategy hints
+        val url = findCanonicalUrl(rawUrls, texts, pkgPlatform)
+
+        // Re-derive platform from the actual URL (critical for browsers viewing social media)
+        val platform = url?.let { MetadataFetcher.detectPlatform(it) }?.takeIf { it != "link" }
+            ?: pkgPlatform
 
         // Filter out noise (counts, timestamps, single chars, UI labels)
         val meaningful = texts.filter { isMeaningfulText(it) }
@@ -175,11 +284,13 @@ class SavelyAccessibilityService : AccessibilityService() {
             .maxByOrNull { it.length }
             ?.takeIf { it != title }
 
+        val imageUrl = rawUrls.firstOrNull { isImageUrl(it) }
+
         return ContentMetadata(
             url = url ?: syntheticUrl(platform),
             title = title,
             description = description,
-            imageUrl = null,
+            imageUrl = imageUrl,
             siteName = siteNameFromPlatform(platform),
             platform = platform,
         )
@@ -188,10 +299,15 @@ class SavelyAccessibilityService : AccessibilityService() {
     private fun findCanonicalUrl(rawUrls: List<String>, texts: List<String>, platform: String): String? {
         val allText = texts.joinToString(" ")
 
-        // 1. Direct URL in tree
+        // 1. Direct URL in tree that matches platform (also handles browser URLs)
         rawUrls.firstOrNull { matchesPlatform(it, platform) }?.let { return it }
 
-        // 2. Construct from ID patterns found in text
+        // 2. For "link" platform (browsers), any https URL works
+        if (platform == "link") {
+            rawUrls.firstOrNull { it.startsWith("https://") }?.let { return it }
+        }
+
+        // 3. Construct from ID patterns found in text
         return when (platform) {
             "youtube" -> YOUTUBE_RE.find(allText)?.groupValues?.getOrNull(1)
                 ?.let { "https://www.youtube.com/watch?v=$it" }
@@ -228,6 +344,8 @@ class SavelyAccessibilityService : AccessibilityService() {
 
     private fun matchesPlatform(url: String, platform: String): Boolean {
         val u = url.lowercase()
+        // CDN/media URLs (cdninstagram.com, pbs.twimg.com, etc.) must never be treated as post URLs
+        if (isImageUrl(u)) return false
         return when (platform) {
             "youtube" -> u.contains("youtube.com") || u.contains("youtu.be")
             "instagram" -> u.contains("instagram.com")
@@ -235,6 +353,18 @@ class SavelyAccessibilityService : AccessibilityService() {
             "linkedin" -> u.contains("linkedin.com")
             "maps" -> u.contains("maps.google") || u.contains("google.com/maps")
             else -> true
+        }
+    }
+
+    private fun hasSpecificPostUrl(urls: List<String>, platform: String): Boolean {
+        return urls.any { url ->
+            when (platform) {
+                "instagram" -> INSTAGRAM_RE.containsMatchIn(url)
+                "youtube" -> YOUTUBE_RE.containsMatchIn(url)
+                "twitter" -> TWITTER_RE.containsMatchIn(url)
+                "linkedin" -> LINKEDIN_RE.containsMatchIn(url)
+                else -> false
+            }
         }
     }
 
@@ -264,6 +394,143 @@ class SavelyAccessibilityService : AccessibilityService() {
         "linkedin" -> "https://www.linkedin.com"
         "maps" -> "https://maps.google.com"
         else -> "https://savely.app"
+    }
+
+    // ---- Auto URL extraction for native social apps ----
+
+    private fun tryAutoExtractUrl(pkg: String, nearX: Int = -1, nearY: Int = -1): String? {
+        val root = try { rootInActiveWindow } catch (_: Throwable) { return null } ?: return null
+        return try {
+            val moreBtn = findMoreOptionsButton(root, pkg, nearX, nearY)
+            if (moreBtn == null) {
+                SavelyLog.w("A11y", "autoExtract: no more-options button found")
+                return null
+            }
+            SavelyLog.d("A11y", "autoExtract: clicking more-options")
+            moreBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+            Thread.sleep(700)
+
+            val newRoot = try { rootInActiveWindow } catch (_: Throwable) { return null } ?: return null
+            try {
+                val copyLinkBtn = findCopyLinkButton(newRoot)
+                if (copyLinkBtn == null) {
+                    SavelyLog.w("A11y", "autoExtract: copy-link not found — dismissing menu")
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    return null
+                }
+                SavelyLog.d("A11y", "autoExtract: clicking copy-link")
+                copyLinkBtn.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                Thread.sleep(300)
+                // Menu closes automatically after "copy link" — no GLOBAL_ACTION_BACK needed here.
+                // Pressing back after a successful copy would navigate the user away from the current page.
+
+                val cm = getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = cm.primaryClip ?: return null
+                if (clip.itemCount == 0) return null
+                val text = clip.getItemAt(0).coerceToText(this).toString().trim()
+                if (text.startsWith("http://") || text.startsWith("https://")) {
+                    SavelyLog.d("A11y", "autoExtract: success → $text")
+                    return text
+                }
+                null
+            } finally {
+                newRoot.recycle()
+            }
+        } finally {
+            root.recycle()
+        }
+    }
+
+    private fun findMoreOptionsButton(
+        root: AccessibilityNodeInfo,
+        pkg: String,
+        nearX: Int = -1,
+        nearY: Int = -1,
+    ): AccessibilityNodeInfo? {
+        val knownIds = when (pkg) {
+            "com.instagram.android" -> listOf(
+                "com.instagram.android:id/overflow_menu_icon",
+                "com.instagram.android:id/row_feed_comment_like_action_bar_kebab",
+            )
+            "com.google.android.youtube" -> listOf(
+                "com.google.android.youtube:id/menu_item_share",
+            )
+            "com.twitter.android", "com.x.android" -> listOf(
+                "com.twitter.android:id/bar_share",
+                "com.x.android:id/bar_share",
+            )
+            "com.linkedin.android" -> listOf(
+                "com.linkedin.android:id/ntv_overflow_menu_button",
+            )
+            else -> emptyList()
+        }
+        for (id in knownIds) {
+            try {
+                val nodes = root.findAccessibilityNodeInfosByViewId(id)
+                if (nodes.isNotEmpty()) {
+                    // When multiple posts are visible in feed, pick the button closest to drop point
+                    val btn = if (nodes.size == 1 || nearX < 0) {
+                        val b = nodes[0]; nodes.drop(1).forEach { it.recycle() }; b
+                    } else {
+                        val best = nodes.minByOrNull { node ->
+                            val r = Rect()
+                            node.getBoundsInScreen(r)
+                            val dx = r.centerX() - nearX
+                            val dy = r.centerY() - nearY
+                            dx * dx + dy * dy
+                        }!!
+                        nodes.filter { it !== best }.forEach { it.recycle() }
+                        best
+                    }
+                    return btn
+                }
+            } catch (_: Throwable) {}
+        }
+        return findClickableByKeywords(root, listOf(
+            "more options", "diğer seçenekler", "daha fazla seçenek",
+            "share", "paylaş",
+            "···", "...",
+        ), depth = 0)
+    }
+
+    private fun findCopyLinkButton(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        return findClickableByKeywords(root, listOf(
+            "copy link", "bağlantıyı kopyala", "link kopyala", "linki kopyala",
+            "copy url", "url kopyala",
+        ), depth = 0)
+    }
+
+    private fun findClickableByKeywords(
+        node: AccessibilityNodeInfo,
+        keywords: List<String>,
+        depth: Int,
+    ): AccessibilityNodeInfo? {
+        if (depth > 14) return null
+        if (node.isClickable) {
+            val combined = listOfNotNull(
+                node.text?.toString(),
+                node.contentDescription?.toString(),
+            ).joinToString(" ").lowercase()
+            if (keywords.any { combined.contains(it) }) return node
+        }
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = findClickableByKeywords(child, keywords, depth + 1)
+            if (result != null) return result
+        }
+        return null
+    }
+
+    private fun isImageUrl(url: String): Boolean {
+        val lower = url.lowercase()
+        return lower.contains("cdninstagram.com") ||
+               lower.contains("pbs.twimg.com") ||
+               lower.contains("i.ytimg.com") ||
+               lower.contains("scontent") ||
+               lower.endsWith(".jpg") || lower.endsWith(".jpeg") ||
+               lower.endsWith(".png") || lower.endsWith(".webp") ||
+               lower.contains(".jpg?") || lower.contains(".jpeg?") ||
+               lower.contains(".png?") || lower.contains(".webp?")
     }
 
     private fun dpToPx(dp: Int) = (dp * resources.displayMetrics.density).toInt()

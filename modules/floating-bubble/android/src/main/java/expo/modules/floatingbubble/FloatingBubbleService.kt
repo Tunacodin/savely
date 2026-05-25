@@ -16,6 +16,7 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
@@ -28,7 +29,7 @@ class FloatingBubbleService : Service() {
 
         private const val NOTIF_CHANNEL = "savely_bubble"
         private const val NOTIF_ID = 9001
-        private const val BUBBLE_DP = 62
+        private const val BUBBLE_DP = 56
     }
 
     private lateinit var wm: WindowManager
@@ -183,10 +184,30 @@ class FloatingBubbleService : Service() {
     private fun showPicker(meta: ContentMetadata) {
         pickerOverlay?.dismiss()
         val sorted = sortedCollections()
-        val overlay = CollectionPickerOverlay(this, wm, meta, sorted) { collectionId ->
-            pickerOverlay = null
-            saveItem(meta, collectionId)
-        }
+        val overlay = CollectionPickerOverlay(
+            context = this,
+            wm = wm,
+            metadata = meta,
+            collections = sorted,
+            onSelected = { collectionId ->
+                saveItem(meta, collectionId)
+            },
+            onNewCollection = { name ->
+                scope.launch(Dispatchers.IO) {
+                    SavelyLog.d("NewCol", "creating collection name=$name")
+                    val newId = createCollection(name)
+                    SavelyLog.d("NewCol", "created id=$newId")
+                    if (newId != null) {
+                        collections = SharedStore.getCollections(this@FloatingBubbleService)
+                    }
+                    saveItem(meta, newId)
+                }
+            },
+            onDismiss = {
+                pickerOverlay = null
+                bubbleView?.snapToEdge()
+            },
+        )
         overlay.show()
         pickerOverlay = overlay
     }
@@ -257,6 +278,50 @@ class FloatingBubbleService : Service() {
         } catch (t: Throwable) {
             SavelyLog.e("Save", "API request failed", t)
             false
+        }
+    }
+
+    // ---- New collection via API ----
+
+    private fun createCollection(name: String): String? {
+        val token = SharedStore.accessToken(this)
+        val userId = SharedStore.userId(this)
+        val baseUrl = SharedStore.supabaseUrl(this)
+        val anonKey = SharedStore.anonKey(this)
+        if (token == null || userId == null || baseUrl == null || anonKey == null) return null
+        return try {
+            val body = JSONObject().apply {
+                put("user_id", userId)
+                put("name", name)
+                put("emoji", "📁")
+                put("bg_color", "#4a4a5a")
+                put("item_count", 0)
+            }.toString()
+            val conn = (URL("$baseUrl/rest/v1/collections").openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 8000
+                readTimeout = 10000
+                doOutput = true
+                setRequestProperty("Content-Type", "application/json")
+                setRequestProperty("apikey", anonKey)
+                setRequestProperty("Authorization", "Bearer $token")
+                setRequestProperty("Prefer", "return=representation")
+            }
+            conn.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
+            val code = conn.responseCode
+            if (code in 200..299) {
+                val response = conn.inputStream.bufferedReader().readText()
+                conn.disconnect()
+                val arr = JSONArray(response)
+                if (arr.length() > 0) arr.getJSONObject(0).optString("id").takeIf { it.isNotEmpty() } else null
+            } else {
+                conn.disconnect()
+                SavelyLog.e("NewCol", "API error $code")
+                null
+            }
+        } catch (t: Throwable) {
+            SavelyLog.e("NewCol", "API failed", t)
+            null
         }
     }
 

@@ -47,13 +47,21 @@ object MetadataFetcher {
             }
         }
 
+        // Social platforms block scraping — go straight to microlink
+        val blockedByAuth = setOf("instagram", "twitter", "tiktok", "linkedin", "facebook", "threads")
+        if (platform in blockedByAuth) {
+            val microlink = fetchMicrolink(url, platform)
+            if (microlink != null) return microlink
+            return ContentMetadata(url = url, title = null, description = null, imageUrl = null, siteName = null, platform = platform)
+        }
+
         val ogResult = fetchOgTags(url, platform)
-        if (ogResult != null && (ogResult.title != null || ogResult.imageUrl != null)) return ogResult
+        if (ogResult != null && ogResult.imageUrl != null) return ogResult
 
         val microlink = fetchMicrolink(url, platform)
         if (microlink != null) return microlink
 
-        return ContentMetadata(url = url, title = null, description = null, imageUrl = null, siteName = null, platform = platform)
+        return ogResult ?: ContentMetadata(url = url, title = null, description = null, imageUrl = null, siteName = null, platform = platform)
     }
 
     private fun fetchYouTubeOembed(url: String): ContentMetadata? = try {

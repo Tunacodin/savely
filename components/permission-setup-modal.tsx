@@ -26,7 +26,7 @@ const STEPS = [
     icon: "eye-line",
     iconColor: "#10b981",
     title: "Erişilebilirlik Servisi",
-    description: "Instagram, YouTube, Twitter gibi uygulamalardaki içerikleri otomatik algılamak için gerekli. Ayarlara yönlendirileceksiniz.",
+    description: "Savely, siz floating bubble'ı bir içeriğin üzerine bıraktığınızda o ekrandaki URL ve başlık bilgisini okur. Bu veri yalnızca ilgili içeriği koleksiyonunuza kaydetmek için kullanılır. Hiçbir kişisel veri toplanmaz veya üçüncü taraflarla paylaşılmaz.",
     action: "Ayarlara Git",
     skip: true,
   },
