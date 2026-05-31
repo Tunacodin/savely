@@ -19,7 +19,6 @@ import { AppState, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { useThemeStore } from "@/store/theme";
 import { AnimatedSplash } from "@/components/animated-splash";
-import { ShareIntentProvider, useShareIntentContext } from "expo-share-intent";
 import { GlobalBottomSheetProvider } from "@/components/global-bottom-sheet";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/store/auth";
@@ -29,6 +28,7 @@ import { DEFAULT_COLLECTIONS, SAVE_LATER_COLLECTION } from "@/constants/default-
 import { registerForPushNotifications, useNotificationSetup } from "@/hooks/use-notifications";
 import i18next from "@/lib/i18n";
 import { setNativeCredentials, clearNativeCredentials, drainPendingItems } from "../modules/sharing-shortcuts";
+import { setShareSession, clearShareSession } from "../modules/savely-share-extension";
 import { PermissionSetupModal } from "@/components/permission-setup-modal";
 import { detectPlatform, inferContentType } from "@/utils/platform-detector";
 import { extractMetadata } from "@/services/metadata";
@@ -85,19 +85,6 @@ async function enrichUnenrichedItems() {
 import "../global.css";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
-
-function ShareIntentHandler({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { hasShareIntent } = useShareIntentContext();
-
-  useEffect(() => {
-    if (hasShareIntent) {
-      router.push("/save" as any);
-    }
-  }, [hasShareIntent]);
-
-  return <>{children}</>;
-}
 
 async function createPendingCollections(addCollection: (c: any) => Promise<string>) {
   try {
@@ -188,6 +175,9 @@ function AuthGate({ children }: { children: React.ReactNode }) {
           supabaseUrl: SUPABASE_URL,
           anonKey: SUPABASE_ANON_KEY,
         }).catch(() => {});
+        if (session.access_token) {
+          void setShareSession({ accessToken: session.access_token, userId }).catch(() => {});
+        }
         // Only run once per app lifecycle
         if (!initializedRef.current) {
           initializedRef.current = true;
@@ -207,6 +197,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       } else {
         initializedRef.current = false;
         void clearNativeCredentials().catch(() => {});
+        void clearShareSession().catch(() => {});
         clearUserData();
       }
     });
@@ -289,6 +280,9 @@ export default function RootLayout() {
           supabaseUrl: SUPABASE_URL,
           anonKey: SUPABASE_ANON_KEY,
         }).catch(() => {});
+        if (session.access_token) {
+          void setShareSession({ accessToken: session.access_token, userId: session.user.id }).catch(() => {});
+        }
       }
       setAuthResolved(true);
     });
@@ -308,45 +302,41 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ShareIntentProvider>
-        <GlobalBottomSheetProvider>
-          <AuthGate>
-          <ShareIntentHandler>
-            <Stack
-              initialRouteName={initialRoute}
-              screenOptions={{ headerShown: false, animation: "slide_from_right" }}
-            >
-              <Stack.Screen name="index" options={{ animation: "none" }} />
-              <Stack.Screen name="(onboarding)" />
-              <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
-              <Stack.Screen name="(auth)" options={{ animation: "none" }} />
-              <Stack.Screen name="account-settings" />
-              <Stack.Screen name="premium-plan" />
-              <Stack.Screen name="notification-settings" />
-              <Stack.Screen name="preferences" />
-              <Stack.Screen
-                name="save"
-                options={{
-                  presentation: "transparentModal",
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen
-                name="new-collection"
-                options={{
-                  presentation: "transparentModal",
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen name="collection-detail" />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-          </ShareIntentHandler>
-          </AuthGate>
-          <StatusBar style={statusBarStyle} />
-          {showSplash && <AnimatedSplash onFinish={() => setShowSplash(false)} />}
-        </GlobalBottomSheetProvider>
-      </ShareIntentProvider>
+      <GlobalBottomSheetProvider>
+        <AuthGate>
+          <Stack
+            initialRouteName={initialRoute}
+            screenOptions={{ headerShown: false, animation: "slide_from_right" }}
+          >
+            <Stack.Screen name="index" options={{ animation: "none" }} />
+            <Stack.Screen name="(onboarding)" />
+            <Stack.Screen name="(tabs)" options={{ animation: "none" }} />
+            <Stack.Screen name="(auth)" options={{ animation: "none" }} />
+            <Stack.Screen name="account-settings" />
+            <Stack.Screen name="premium-plan" />
+            <Stack.Screen name="notification-settings" />
+            <Stack.Screen name="preferences" />
+            <Stack.Screen
+              name="save"
+              options={{
+                presentation: "transparentModal",
+                animation: "none",
+              }}
+            />
+            <Stack.Screen
+              name="new-collection"
+              options={{
+                presentation: "transparentModal",
+                animation: "none",
+              }}
+            />
+            <Stack.Screen name="collection-detail" />
+            <Stack.Screen name="+not-found" />
+          </Stack>
+        </AuthGate>
+        <StatusBar style={statusBarStyle} />
+        {showSplash && <AnimatedSplash onFinish={() => setShowSplash(false)} />}
+      </GlobalBottomSheetProvider>
     </GestureHandlerRootView>
   );
 }

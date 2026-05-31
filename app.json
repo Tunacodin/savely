@@ -81,19 +81,7 @@
           "cameraPermission": "Savely needs camera access if you choose to take a new photo for your profile."
         }
       ],
-      [
-        "expo-share-intent",
-        {
-          "iosAppGroupIdentifier": "group.com.savelyapp.savely",
-          "iosActivationRules": {
-            "NSExtensionActivationSupportsWebURLWithMaxCount": 1,
-            "NSExtensionActivationSupportsText": true
-          },
-          "androidIntentFilters": [
-            "text/*"
-          ]
-        }
-      ],
+      "./plugins/with-savely-share-extension.js",
       "expo-localization",
       [
         "expo-notifications",

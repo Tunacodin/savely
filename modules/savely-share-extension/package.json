@@ -1,0 +1,7 @@
+{
+  "name": "savely-share-extension",
+  "version": "0.1.0",
+  "description": "Local Expo module: iOS Share Extension with native collection picker (Android parity)",
+  "main": "index.ts",
+  "private": true
+}

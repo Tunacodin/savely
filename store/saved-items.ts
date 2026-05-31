@@ -5,6 +5,7 @@ import type { PlatformName } from "@/components/ui/platform-badge";
 import { supabase } from "@/lib/supabase";
 import { pushCollectionShortcuts, removeAllShortcuts } from "../modules/sharing-shortcuts";
 import { updateBubbleCollections } from "../modules/floating-bubble";
+import { setShareCollections } from "../modules/savely-share-extension";
 
 const RECENT_COLLECTIONS_KEY = "recent_collections_v1";
 const RECENT_COLLECTIONS_LIMIT = 4;
@@ -35,6 +36,7 @@ function syncShortcuts(recentIds: string[], collections: Collection[]): void {
     .map((c) => ({ id: c.id, name: c.name, emoji: c.emoji, bgColor: c.bgColor }));
   void pushCollectionShortcuts(merged).catch(() => {});
   void updateBubbleCollections(merged).catch(() => {});
+  void setShareCollections(merged).catch(() => {});
 }
 
 const freePlan: PremiumPlan = {

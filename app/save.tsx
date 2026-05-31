@@ -2,17 +2,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, useWindowDimensions } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { useShareIntentContext } from "expo-share-intent";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { SaveItemForm, type SaveItemFormHandle } from "@/components/forms/SaveItemForm";
-import { extractUrlFromText } from "@/utils/platform-detector";
 import { useThemeColors } from "@/hooks/use-theme";
 import { consumeShortcutId, shortcutIdToCollectionId } from "../modules/sharing-shortcuts";
 
 export default function SaveScreen() {
   const router = useRouter();
   const { url: routeUrl } = useLocalSearchParams<{ url?: string }>();
-  const { shareIntent, resetShareIntent } = useShareIntentContext();
 
   const [sheetVisible, setSheetVisible] = useState(true);
   const [backdropVisible, setBackdropVisible] = useState(true);
@@ -36,10 +33,7 @@ export default function SaveScreen() {
 
   const snapPoints = useMemo(() => [windowHeight * 0.9], [windowHeight]);
 
-  const getInitialUrl = () => {
-    if (routeUrl) return routeUrl;
-    return shareIntent.webUrl ?? extractUrlFromText(shareIntent.text ?? "") ?? undefined;
-  };
+  const getInitialUrl = () => routeUrl;
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) {
@@ -54,9 +48,8 @@ export default function SaveScreen() {
     navigatingRef.current = true;
     setBackdropVisible(false);
     setSheetVisible(false);
-    resetShareIntent();
     goBack();
-  }, [resetShareIntent, goBack]);
+  }, [goBack]);
 
   const requestClose = useCallback(() => {
     if (navigatingRef.current) return;
