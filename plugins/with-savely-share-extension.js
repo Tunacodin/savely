@@ -88,60 +88,11 @@ function withResourceBundleSigningFix(config) {
   ]);
 }
 
-// 3) Override expo-share-intent's generated ShareExtension files with ours
-//    + patch Info.plist (Supabase config) and entitlements (Keychain group)
-function withCustomShareExtensionFiles(config) {
-  return withDangerousMod(config, [
-    "ios",
-    async (cfg) => {
-      const platformRoot = cfg.modRequest.platformProjectRoot;
-      const extDir = path.join(platformRoot, EXTENSION_NAME);
-      const moduleRoot = path.join(
-        __dirname,
-        "..",
-        "modules",
-        "savely-share-extension",
-        "ios"
-      );
-
-      if (!fs.existsSync(extDir)) {
-        console.warn(
-          `[savely-share-extension] ${EXTENSION_NAME}/ not found; expo-share-intent should have generated it.`
-        );
-        return cfg;
-      }
-
-      // Override ShareViewController.swift with our custom implementation
-      fs.copyFileSync(
-        path.join(moduleRoot, "ShareExtension", "ShareViewController.swift"),
-        path.join(extDir, "ShareViewController.swift")
-      );
-
-      // Add our additional Swift sources
-      fs.copyFileSync(
-        path.join(moduleRoot, "Shared", "SharedStore.swift"),
-        path.join(extDir, "SharedStore.swift")
-      );
-      for (const file of ["SharePickerView.swift", "ShareAPI.swift", "MetadataFetcher.swift"]) {
-        fs.copyFileSync(
-          path.join(moduleRoot, "ShareExtension", file),
-          path.join(extDir, file)
-        );
-      }
-
-      // Patch Info.plist: add Supabase keys
-      patchInfoPlist(extDir);
-
-      // Patch entitlements: add Keychain Access Group
-      patchEntitlements(extDir);
-
-      console.log(
-        "[savely-share-extension] Overrode ShareViewController.swift and added 4 Swift sources"
-      );
-      return cfg;
-    },
-  ]);
-}
+// Note: on iOS, mod-compiler precedences are dangerous=-2 < xcodeproj=-1,
+// so withDangerousMod runs BEFORE withXcodeProject. That means we can't
+// override ShareExtension/* files in a dangerous mod — they don't exist yet
+// when dangerous runs. The override lives in step 4 (withXcodeProject), which
+// runs after expo-share-intent has generated the target's files on disk.
 
 function patchInfoPlist(extDir) {
   const candidates = ["ShareExtension-Info.plist", "Info.plist"];
@@ -189,10 +140,56 @@ function patchEntitlements(extDir) {
   fs.writeFileSync(plistPath, content, "utf8");
 }
 
-// 4) Register the additional Swift files in the Xcode project so they get
-//    compiled into the ShareExtension target
-function withAddFilesToShareExtensionTarget(config) {
+// 4) Override files + register additional Swift sources in one xcodeproj mod.
+//    Runs AFTER expo-share-intent's withXcodeProject (plugin ordering in
+//    app.json), so by this point ShareExtension/ exists on disk with
+//    expo-share-intent's generated ShareViewController.swift, Info.plist, and
+//    entitlements. We overwrite the Swift VC, copy 4 extra Swift sources,
+//    patch Info.plist/entitlements, and register the extra sources in pbxproj.
+function withShareExtensionCustomization(config) {
   return withXcodeProject(config, (cfg) => {
+    const platformRoot = cfg.modRequest.platformProjectRoot;
+    const extDir = path.join(platformRoot, EXTENSION_NAME);
+    const moduleRoot = path.join(
+      __dirname,
+      "..",
+      "modules",
+      "savely-share-extension",
+      "ios"
+    );
+
+    if (!fs.existsSync(extDir)) {
+      console.warn(
+        `[savely-share-extension] ${EXTENSION_NAME}/ not found; expo-share-intent should have generated it.`
+      );
+      return cfg;
+    }
+
+    // Overwrite the generated ShareViewController.swift with our SwiftUI picker
+    fs.copyFileSync(
+      path.join(moduleRoot, "ShareExtension", "ShareViewController.swift"),
+      path.join(extDir, "ShareViewController.swift")
+    );
+
+    // Copy additional Swift sources into the target's directory
+    fs.copyFileSync(
+      path.join(moduleRoot, "Shared", "SharedStore.swift"),
+      path.join(extDir, "SharedStore.swift")
+    );
+    for (const file of ["SharePickerView.swift", "ShareAPI.swift", "MetadataFetcher.swift"]) {
+      fs.copyFileSync(
+        path.join(moduleRoot, "ShareExtension", file),
+        path.join(extDir, file)
+      );
+    }
+
+    // Patch Info.plist with Supabase config (read by Bundle.main.object in extension)
+    patchInfoPlist(extDir);
+
+    // Patch entitlements with Keychain Access Group (shared with main app)
+    patchEntitlements(extDir);
+
+    // Register the 4 extra Swift sources in pbxproj so they compile into the target
     const pbx = cfg.modResults;
     const target = pbx.pbxTargetByName(EXTENSION_NAME);
     if (!target) {
@@ -202,7 +199,6 @@ function withAddFilesToShareExtensionTarget(config) {
       return cfg;
     }
 
-    // Find the ShareExtension PBXGroup
     const groups = pbx.hash.project.objects.PBXGroup;
     let extGroupUUID = null;
     for (const uuid in groups) {
@@ -219,7 +215,6 @@ function withAddFilesToShareExtensionTarget(config) {
       return cfg;
     }
 
-    // Check what's already in the group to avoid duplicates
     const existingGroup = groups[extGroupUUID];
     const existingChildren = (existingGroup.children || []).map((c) =>
       typeof c === "object" ? (c.comment || c.value) : c
@@ -237,8 +232,9 @@ function withAddFilesToShareExtensionTarget(config) {
         );
       }
     }
+
     console.log(
-      `[savely-share-extension] Added ${added} Swift files to ${EXTENSION_NAME} target`
+      `[savely-share-extension] Overrode ShareViewController.swift, copied ${CUSTOM_SWIFT_FILES.length - 1} extra sources, added ${added} to pbxproj`
     );
     return cfg;
   });
@@ -247,7 +243,6 @@ function withAddFilesToShareExtensionTarget(config) {
 module.exports = function withSavelyShareExtension(config) {
   config = withMainAppEntitlements(config);
   config = withResourceBundleSigningFix(config);
-  config = withCustomShareExtensionFiles(config);
-  config = withAddFilesToShareExtensionTarget(config);
+  config = withShareExtensionCustomization(config);
   return config;
 };
