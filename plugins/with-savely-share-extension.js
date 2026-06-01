@@ -9,6 +9,7 @@ const path = require("path");
 const APP_GROUP = "group.com.savelyapp.savely";
 const EXTENSION_NAME = "SavelyShareExtension";
 const EXTENSION_BUNDLE_ID = "com.savelyapp.savely.share-extension";
+const APPLE_TEAM_ID = "9XNKWD8QBV";
 
 // Mirror of lib/supabase.ts — anon key is public, safe to embed.
 const DEFAULT_SUPABASE_URL = "https://djdwolekentrczauhlpl.supabase.co";
@@ -32,7 +33,55 @@ function withMainAppEntitlements(config) {
   });
 }
 
-// 2) Copy extension files into ios/SavelyShareExtension/
+// 2) Podfile post_install: set DEVELOPMENT_TEAM on pod resource bundles
+//    (fixes XCODE_RESOURCE_BUNDLE_CODE_SIGNING_ERROR in Xcode 14+ when an
+//    app_extension target is added to the project)
+function withResourceBundleSigningFix(config) {
+  return withDangerousMod(config, [
+    "ios",
+    async (cfg) => {
+      const podfilePath = path.join(
+        cfg.modRequest.platformProjectRoot,
+        "Podfile"
+      );
+      if (!fs.existsSync(podfilePath)) return cfg;
+      let podfile = fs.readFileSync(podfilePath, "utf8");
+      const MARKER_START = "# >>> SAVELY_RESOURCE_BUNDLE_SIGNING_FIX";
+      const MARKER_END = "# <<< SAVELY_RESOURCE_BUNDLE_SIGNING_FIX";
+      if (podfile.includes(MARKER_START)) return cfg;
+
+      const snippet = `
+    ${MARKER_START}
+    installer.pods_project.targets.each do |target|
+      if target.respond_to?(:product_type) && target.product_type == "com.apple.product-type.bundle"
+        target.build_configurations.each do |bc|
+          bc.build_settings['DEVELOPMENT_TEAM'] = '${APPLE_TEAM_ID}'
+          bc.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
+          bc.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Development'
+        end
+      end
+    end
+    ${MARKER_END}
+`;
+
+      if (podfile.includes("post_install do |installer|")) {
+        podfile = podfile.replace(
+          /post_install do \|installer\|/,
+          `post_install do |installer|${snippet}`
+        );
+      } else {
+        podfile += `\npost_install do |installer|${snippet}end\n`;
+      }
+      fs.writeFileSync(podfilePath, podfile, "utf8");
+      console.log(
+        "[savely-share-extension] Added Podfile resource bundle signing fix"
+      );
+      return cfg;
+    },
+  ]);
+}
+
+// 3) Copy extension files into ios/SavelyShareExtension/
 function withCopyExtensionFiles(config) {
   return withDangerousMod(config, [
     "ios",
@@ -200,6 +249,7 @@ module.exports = function withSavelyShareExtension(config, props) {
   const supabaseAnonKey = p.supabaseAnonKey || DEFAULT_SUPABASE_ANON_KEY;
 
   config = withMainAppEntitlements(config);
+  config = withResourceBundleSigningFix(config);
   config = withCopyExtensionFiles(config);
   config = withExtensionTarget(config, { supabaseUrl, supabaseAnonKey });
   return config;
