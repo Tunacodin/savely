@@ -219,6 +219,8 @@ Deno.serve(async (req) => {
 
     // Send in batches of 100
     let totalSent = 0;
+    const deadTokens = new Set<string>();
+
     for (let i = 0; i < messages.length; i += 100) {
       const batch = messages.slice(i, i + 100);
       const res = await fetch(EXPO_PUSH_URL, {
@@ -229,20 +231,31 @@ Deno.serve(async (req) => {
 
       if (res.ok) {
         const result = await res.json();
-        // Update log entries with ticket IDs
         const batchLogs = logEntries.slice(i, i + 100);
         if (result.data) {
           for (let j = 0; j < result.data.length; j++) {
-            if (batchLogs[j] && result.data[j]?.id) {
-              batchLogs[j].expo_ticket_id = result.data[j].id;
+            const ticket = result.data[j];
+            if (batchLogs[j] && ticket?.id) {
+              batchLogs[j].expo_ticket_id = ticket.id;
             }
-            if (result.data[j]?.status === "error") {
+            if (ticket?.status === "error") {
               batchLogs[j].status = "failed";
+              if (ticket?.details?.error === "DeviceNotRegistered") {
+                deadTokens.add(batch[j].to);
+              }
             }
           }
         }
         totalSent += batch.length;
       }
+    }
+
+    // Deactivate dead tokens so we stop pushing to them
+    if (deadTokens.size > 0) {
+      await supabase
+        .from("push_tokens")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .in("expo_push_token", Array.from(deadTokens));
     }
 
     // Log all notifications
