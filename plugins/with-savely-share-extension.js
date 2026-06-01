@@ -53,14 +53,17 @@ function withResourceBundleSigningFix(config) {
       const snippet = `
     ${MARKER_START}
     installer.pods_project.targets.each do |target|
-      if target.respond_to?(:product_type) && target.product_type == "com.apple.product-type.bundle"
-        target.build_configurations.each do |bc|
+      target.build_configurations.each do |bc|
+        if target.respond_to?(:product_type) && target.product_type == "com.apple.product-type.bundle"
+          bc.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+          bc.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
+          bc.build_settings['CODE_SIGN_IDENTITY'] = ''
+          bc.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
           bc.build_settings['DEVELOPMENT_TEAM'] = '${APPLE_TEAM_ID}'
-          bc.build_settings['CODE_SIGN_STYLE'] = 'Automatic'
-          bc.build_settings['CODE_SIGN_IDENTITY'] = 'Apple Development'
         end
       end
     end
+    puts "[savely-share-extension] Applied resource bundle signing fix"
     ${MARKER_END}
 `;
 
