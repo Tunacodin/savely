@@ -40,6 +40,11 @@ yarn-error.*
 google-service-account.json
 savely-google-console-key.json
 
+# Firebase / FCM credentials
+credentials/
+google-services*.json
+GoogleService-Info.plist
+
 # Yerel iOS cihaz UDID listesi (EAS / Apple Developer referansı)
 eas-devices.local.txt
 

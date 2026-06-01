@@ -28,6 +28,7 @@
     "android": {
       "softwareKeyboardLayoutMode": "resize",
       "package": "com.savelyapp.savely",
+      "googleServicesFile": "./credentials/android/google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#27262b",
         "foregroundImage": "./assets/images/android-icon-foreground.png"
