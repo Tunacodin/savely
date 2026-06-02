@@ -25,6 +25,7 @@ interface SavelyShareExtensionNativeModule {
   setSession(session: ShareSession): Promise<void>;
   clearSession(): Promise<void>;
   setCollections(collections: ShareCollection[]): Promise<void>;
+  donateCollectionShortcuts(collections: ShareCollection[]): Promise<void>;
   drainPendingShares(): Promise<PendingShare[]>;
   consumeOpenedShareUrl(): Promise<string | null>;
 }
@@ -44,6 +45,11 @@ export async function clearShareSession(): Promise<void> {
 export async function setShareCollections(collections: ShareCollection[]): Promise<void> {
   if (Platform.OS !== "ios" || !native) return;
   await native.setCollections(collections.slice(0, 6));
+}
+
+export async function donateCollectionShortcuts(collections: ShareCollection[]): Promise<void> {
+  if (Platform.OS !== "ios" || !native) return;
+  await native.donateCollectionShortcuts(collections.slice(0, 4));
 }
 
 export async function drainPendingShares(): Promise<PendingShare[]> {

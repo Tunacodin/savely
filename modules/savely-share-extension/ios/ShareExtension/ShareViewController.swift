@@ -2,6 +2,7 @@ import UIKit
 import SwiftUI
 import MobileCoreServices
 import UniformTypeIdentifiers
+import Intents
 
 @objc(ShareViewController)
 class ShareViewController: UIViewController {
@@ -19,10 +20,75 @@ class ShareViewController: UIViewController {
   }
 
   private func loadAndPresent() async {
+    // Direct collection shortcut tapped — save silently without showing UI
+    if let intent = extensionContext?.intent as? INSendMessageIntent,
+       let collectionId = intent.conversationIdentifier {
+      await handleSilentSave(collectionId: collectionId)
+      return
+    }
+
     guard let url = await extractSharedUrl() else {
       await closeWithCancel()
       return
     }
+    await showPickerUI(url: url)
+  }
+
+  // MARK: - Silent save (called when user taps a collection shortcut)
+
+  private func handleSilentSave(collectionId: String) async {
+    guard let url = await extractSharedUrl() else {
+      await closeWithCancel()
+      return
+    }
+
+    let metadata = await fetchMetadataWithTimeout(url: url)
+
+    do {
+      try await ShareAPI.saveItem(
+        url: url,
+        title: metadata.title,
+        description: metadata.description,
+        imageUrl: metadata.imageUrl,
+        platform: metadata.platform,
+        collectionId: collectionId
+      )
+      await MainActor.run { closeNormally() }
+    } catch ShareAPIError.notAuthenticated {
+      await MainActor.run { openMainApp(url: url) }
+    } catch {
+      // Network / API failure — fall back to the full picker
+      await showPickerUI(url: url)
+    }
+  }
+
+  // Race MetadataFetcher against a 5-second timeout so the extension
+  // doesn't block when the user taps a shortcut.
+  private func fetchMetadataWithTimeout(url: String) async -> ContentMetadata {
+    let fallback = ContentMetadata(
+      url: url, title: nil, description: nil,
+      imageUrl: nil, siteName: nil,
+      platform: MetadataFetcher.detectPlatform(url)
+    )
+    return await withTaskGroup(of: ContentMetadata.self) { group in
+      group.addTask { await MetadataFetcher.fetch(url: url) }
+      group.addTask {
+        try? await Task.sleep(nanoseconds: 5_000_000_000)
+        return ContentMetadata(
+          url: url, title: nil, description: nil,
+          imageUrl: nil, siteName: nil,
+          platform: MetadataFetcher.detectPlatform(url)
+        )
+      }
+      let first = await group.next() ?? fallback
+      group.cancelAll()
+      return first
+    }
+  }
+
+  // MARK: - Picker UI
+
+  private func showPickerUI(url: String) async {
     let collections = SharedStore.getCollections()
     let model = await SharePickerModel(url: url, collections: collections)
     await MainActor.run {

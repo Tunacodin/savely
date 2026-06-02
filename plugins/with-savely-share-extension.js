@@ -24,20 +24,26 @@ const CUSTOM_SWIFT_FILES = [
   "MetadataFetcher.swift",
 ];
 
-// 1) Main app entitlements: add Keychain Access Group (expo-share-intent already
-//    adds App Group, but Keychain is needed for SharedStore session reads).
+// 1) Main app entitlements: App Group + Keychain Access Group + Siri (for INSendMessageIntent donations)
 function withMainAppEntitlements(config) {
   return withEntitlementsPlist(config, async (cfg) => {
     const e = cfg.modResults;
+
     const groups = e["com.apple.security.application-groups"] || [];
     if (!groups.includes(APP_GROUP)) {
       e["com.apple.security.application-groups"] = [...groups, APP_GROUP];
     }
+
     const kc = e["keychain-access-groups"] || [];
     const kcEntry = `$(AppIdentifierPrefix)${APP_GROUP}`;
     if (!kc.includes(kcEntry)) {
       e["keychain-access-groups"] = [...kc, kcEntry];
     }
+
+    if (!e["com.apple.developer.siri"]) {
+      e["com.apple.developer.siri"] = true;
+    }
+
     return cfg;
   });
 }
@@ -103,17 +109,37 @@ function patchInfoPlist(extDir) {
     console.warn("[savely-share-extension] Could not find ShareExtension Info.plist");
     return;
   }
-  let content = fs.readFileSync(plistPath, "utf8");
-  if (content.includes("SavelySupabaseUrl")) return;
 
-  const inject = `	<key>SavelySupabaseUrl</key>
-	<string>${DEFAULT_SUPABASE_URL}</string>
-	<key>SavelySupabaseAnonKey</key>
-	<string>${DEFAULT_SUPABASE_ANON_KEY}</string>
+  let content = fs.readFileSync(plistPath, "utf8");
+  let changed = false;
+
+  // Supabase config (injected once)
+  if (!content.includes("SavelySupabaseUrl")) {
+    const inject = `\t<key>SavelySupabaseUrl</key>
+\t<string>${DEFAULT_SUPABASE_URL}</string>
+\t<key>SavelySupabaseAnonKey</key>
+\t<string>${DEFAULT_SUPABASE_ANON_KEY}</string>
 </dict>
 </plist>`;
-  content = content.replace(/<\/dict>\s*<\/plist>\s*$/, inject);
-  fs.writeFileSync(plistPath, content, "utf8");
+    content = content.replace(/<\/dict>\s*<\/plist>\s*$/, inject);
+    changed = true;
+  }
+
+  // IntentsSupported — needed for INSendMessageIntent shortcuts to route here
+  if (!content.includes("IntentsSupported")) {
+    const intentsBlock = `\t\t\t<key>IntentsSupported</key>
+\t\t\t<array>
+\t\t\t\t<string>INSendMessageIntent</string>
+\t\t\t</array>
+\t\t\t`;
+    content = content.replace(
+      /<key>NSExtensionActivationRule<\/key>/,
+      `${intentsBlock}<key>NSExtensionActivationRule</key>`
+    );
+    changed = true;
+  }
+
+  if (changed) fs.writeFileSync(plistPath, content, "utf8");
 }
 
 function patchEntitlements(extDir) {
@@ -127,17 +153,33 @@ function patchEntitlements(extDir) {
     );
     return;
   }
-  let content = fs.readFileSync(plistPath, "utf8");
-  if (content.includes("keychain-access-groups")) return;
 
-  const inject = `	<key>keychain-access-groups</key>
-	<array>
-		<string>$(AppIdentifierPrefix)${APP_GROUP}</string>
-	</array>
+  let content = fs.readFileSync(plistPath, "utf8");
+  let changed = false;
+
+  // Keychain access group (shared with main app for session reads)
+  if (!content.includes("keychain-access-groups")) {
+    const kcInject = `\t<key>keychain-access-groups</key>
+\t<array>
+\t\t<string>$(AppIdentifierPrefix)${APP_GROUP}</string>
+\t</array>
 </dict>
 </plist>`;
-  content = content.replace(/<\/dict>\s*<\/plist>\s*$/, inject);
-  fs.writeFileSync(plistPath, content, "utf8");
+    content = content.replace(/<\/dict>\s*<\/plist>\s*$/, kcInject);
+    changed = true;
+  }
+
+  // Siri entitlement — required so the extension can handle INSendMessageIntent
+  if (!content.includes("com.apple.developer.siri")) {
+    const siriInject = `\t<key>com.apple.developer.siri</key>
+\t<true/>
+</dict>
+</plist>`;
+    content = content.replace(/<\/dict>\s*<\/plist>\s*$/, siriInject);
+    changed = true;
+  }
+
+  if (changed) fs.writeFileSync(plistPath, content, "utf8");
 }
 
 // 4) Override files + register additional Swift sources in one xcodeproj mod.
@@ -145,7 +187,7 @@ function patchEntitlements(extDir) {
 //    app.json), so by this point ShareExtension/ exists on disk with
 //    expo-share-intent's generated ShareViewController.swift, Info.plist, and
 //    entitlements. We overwrite the Swift VC, copy 4 extra Swift sources,
-//    patch Info.plist/entitlements, and register the extra sources in pbxproj.
+//    patch Info.plist/entitlements, register extra sources, and link Intents.framework.
 function withShareExtensionCustomization(config) {
   return withXcodeProject(config, (cfg) => {
     const platformRoot = cfg.modRequest.platformProjectRoot;
@@ -183,10 +225,10 @@ function withShareExtensionCustomization(config) {
       );
     }
 
-    // Patch Info.plist with Supabase config (read by Bundle.main.object in extension)
+    // Patch Info.plist with Supabase config + IntentsSupported
     patchInfoPlist(extDir);
 
-    // Patch entitlements with Keychain Access Group (shared with main app)
+    // Patch entitlements with Keychain Access Group + Siri
     patchEntitlements(extDir);
 
     // Register the 4 extra Swift sources in pbxproj so they compile into the target
@@ -231,6 +273,21 @@ function withShareExtensionCustomization(config) {
           `[savely-share-extension] Failed to add ${file}: ${e.message}`
         );
       }
+    }
+
+    // Link Intents.framework to the ShareExtension target
+    // (needed for import Intents in ShareViewController.swift)
+    try {
+      const fileRefs = pbx.hash.project.objects.PBXFileReference || {};
+      const alreadyLinked = Object.values(fileRefs).some(
+        (f) => typeof f === "object" && f.name === "Intents.framework"
+      );
+      if (!alreadyLinked) {
+        pbx.addFramework("Intents.framework", { target: target.uuid, link: true });
+        console.log("[savely-share-extension] Linked Intents.framework to ShareExtension");
+      }
+    } catch (e) {
+      console.warn(`[savely-share-extension] Could not link Intents.framework: ${e.message}`);
     }
 
     console.log(
